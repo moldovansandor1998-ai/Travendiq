@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== Travendiq Design System – felülettokenek (dark mode előkészítve) ===== */
+:root {
+  color-scheme: light;
+  --surface: 250 249 247;        /* oldalháttér */
+  --surface-raised: 255 255 255; /* kártyák */
+  --surface-muted: 243 241 236;
+  --border: 231 227 217;
+  --text: 11 20 32;
+  --text-muted: 77 101 123;
+}
+.dark {
+  color-scheme: dark;
+  --surface: 11 20 32;
+  --surface-raised: 20 31 43;
+  --surface-muted: 30 42 56;
+  --border: 64 83 100;
+  --text: 245 247 249;
+  --text-muted: 174 189 204;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  @apply bg-sand-50 text-ink-950 antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection {
+  @apply bg-lagoon-200 text-lagoon-950;
+}
+:focus-visible {
+  @apply outline-none ring-2 ring-lagoon-500 ring-offset-2 ring-offset-sand-50;
+}
+
+@layer components {
+  /* ---------- elrendezés ---------- */
+  .container-page {
+    @apply mx-auto w-full max-w-page px-4 sm:px-6;
+  }
+
+  /* ---------- tipográfia ---------- */
+  .section-title {
+    @apply text-xl font-extrabold tracking-tight text-ink-950 sm:text-2xl;
+  }
+  .section-subtitle {
+    @apply mt-1 text-sm text-ink-600;
+  }
+  .kicker {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-lagoon-600;
+  }
+
+  /* ---------- gombok ---------- */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-lagoon-500 focus-visible:ring-offset-2
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-ink-950 text-white shadow-card hover:bg-ink-800 active:scale-[0.98];
+  }
+  .btn-accent {
+    @apply btn bg-coral-500 text-white shadow-card hover:bg-coral-600 active:scale-[0.98];
+  }
+  .btn-secondary {
+    @apply btn border border-ink-200 bg-white text-ink-900 hover:border-ink-300 hover:bg-ink-50 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply btn px-3 py-2 text-ink-700 hover:bg-ink-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .btn-sm {
+    @apply px-3.5 py-2 text-[13px];
+  }
+
+  /* ---------- űrlap ---------- */
+  .input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-950 shadow-sm transition
+      placeholder:text-ink-400 hover:border-ink-300
+      focus:border-lagoon-500 focus:outline-none focus:ring-4 focus:ring-lagoon-100;
+  }
+  .input-label {
+    @apply mb-1.5 block text-[13px] font-semibold text-ink-700;
+  }
+  .checkbox {
+    @apply h-4 w-4 rounded border-ink-300 text-lagoon-600 focus:ring-lagoon-400;
+  }
+
+  /* ---------- felületek ---------- */
+  .card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-card;
+  }
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lifted;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-ink-700 transition hover:border-lagoon-400 hover:text-lagoon-700;
+  }
+  .chip-active {
+    @apply border-lagoon-600 bg-lagoon-50 text-lagoon-800;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold;
+  }
+  .badge-soft {
+    @apply badge bg-white/95 text-ink-800 shadow-card backdrop-blur;
+  }
+  .badge-rating {
+    @apply badge bg-ink-950 text-white;
+  }
+
+  /* ---------- skeleton ---------- */
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl bg-ink-100;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent;
+    animation: shimmer 1.4s infinite;
+  }
+
+  /* ---------- táblázat ---------- */
+  .table-wrap {
+    @apply card overflow-x-auto;
+  }
+  .table {
+    @apply w-full min-w-[640px] text-left text-sm;
+  }
+  .table thead th {
+    @apply border-b border-ink-100 bg-ink-50/60 px-4 py-3 text-xs font-bold uppercase tracking-wide text-ink-500;
+  }
+  .table tbody td {
+    @apply border-b border-ink-50 px-4 py-3 align-middle text-ink-800;
+  }
+  .table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+  .table tbody tr:hover {
+    @apply bg-lagoon-50/50;
+  }
+
+  /* ---------- dashboard ---------- */
+  .kpi {
+    @apply card p-5;
+  }
+  .kpi-value {
+    @apply mt-1 text-2xl font-extrabold tracking-tight text-ink-950;
+  }
+  .kpi-label {
+    @apply text-[13px] font-semibold text-ink-500;
+  }
+  .side-link {
+    @apply flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-ink-600 transition hover:bg-ink-50 hover:text-ink-950;
+  }
+  .side-link-active {
+    @apply bg-lagoon-50 text-lagoon-800;
+  }
+
+  /* ---------- visszajelzés ---------- */
+  .toast {
+    @apply card flex items-center gap-3 border-l-4 px-4 py-3 text-sm font-semibold shadow-lifted;
+  }
+  .empty-state {
+    @apply card flex flex-col items-center gap-3 px-6 py-14 text-center;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
