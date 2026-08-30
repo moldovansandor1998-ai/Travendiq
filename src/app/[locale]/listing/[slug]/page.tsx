@@ -9,11 +9,12 @@ import { ListingCard } from "@/components/ListingCard";
 import { BookingBox } from "@/components/booking/BookingBox";
 import { SafeImage } from "@/components/SafeImage";
 import { ListingActions } from "@/components/listing/ListingActions";
+import { MARKETPLACE_LIVE } from "@/lib/launch";
 
 async function getListing(slug: string) {
   const supabase = createClient();
   const { data } = await supabase.from("listings").select(`
-    *, city:cities(name, slug, lat, lng), category:categories(slug), provider:providers(display_name, status),
+    *, city:cities(name, slug, lat, lng), category:categories(slug), provider:providers(display_name, status, owner_id),
     translations:listing_translations(*), media:listing_media(kind, url, alt, sort_order),
     options:listing_options(id, code, price_delta_adult, price_delta_child, is_active,
       translations:listing_option_translations(locale, name)),
@@ -35,6 +36,7 @@ async function getSlots(listingId: string) {
 }
 
 export async function generateMetadata({ params }: { params: { locale: Locale; slug: string } }): Promise<Metadata> {
+  if (!MARKETPLACE_LIVE) return { title: "Travendiq" };
   const l = await getListing(params.slug);
   if (!l) return {};
   const tr = l.translations.find((x: { locale: string }) => x.locale === params.locale)
@@ -63,6 +65,13 @@ export default async function ListingPage({ params }: { params: { locale: Locale
   const c = locale === "hu" ? hu : en;
   const l = await getListing(slug);
   if (!l) notFound();
+  if (!MARKETPLACE_LIVE) {
+    const auth = createClient();
+    const { data: { user } } = await auth.auth.getUser();
+    const { data: isAdmin } = user ? await auth.rpc("is_admin") : { data: false };
+    const ownerId = (l.provider as { owner_id?: string } | null)?.owner_id;
+    if (!user || (!isAdmin && ownerId !== user.id)) notFound();
+  }
   const trs = l.translations as Array<Record<string, string | null>>;
   const tr = trs.find((x) => x.locale === locale) ?? trs.find((x) => x.locale === "en") ?? trs[0];
   const media = (l.media ?? []).sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order);
