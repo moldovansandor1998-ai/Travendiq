@@ -9,6 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/en/search`, changeFrequency: "hourly", priority: 0.8 },
   ];
 
+  if (process.env.NEXT_PUBLIC_MARKETPLACE_LIVE !== "true") return urls.slice(0, 2);
   try {
     const sb = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
