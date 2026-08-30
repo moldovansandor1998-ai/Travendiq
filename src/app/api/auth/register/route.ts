@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { clientIp, rateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
 import { resolveLocale } from "@/lib/i18n/locales";
 
@@ -14,14 +14,16 @@ export async function POST(req: NextRequest) {
   const name = String(body?.name ?? "").trim().slice(0, 120);
   const locale = resolveLocale(body?.locale ?? "en");
   const svc = createServiceClient();
+  const ipKey = `register:${clientIp(req)}`;
+  const emailKey = `register-email:${email}`;
 
-  if (!(await rateLimit(svc, `register:${clientIp(req)}`, 5, 300))) {
+  if (!(await rateLimit(svc, ipKey, 5, 300))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   if (!EMAIL_RE.test(email) || name.length < 2 || password.length < 8 || password.length > 72) {
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
-  if (!(await rateLimit(svc, `register-email:${email}`, 3, 900))) {
+  if (!(await rateLimit(svc, emailKey, 3, 900))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
@@ -51,6 +53,10 @@ export async function POST(req: NextRequest) {
     await svc.auth.admin.deleteUser(data.user.id).catch((deleteError) =>
       console.error("[auth/register] rollback failed:", deleteError)
     );
+    await Promise.all([
+      releaseRateLimit(svc, ipKey),
+      releaseRateLimit(svc, emailKey),
+    ]);
     return NextResponse.json({ error: "send_failed" }, { status: 502 });
   }
   return NextResponse.json({ ok: true });
