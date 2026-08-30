@@ -27,18 +27,19 @@ async function compressImage(file: File): Promise<Blob> {
   }
 }
 
-export function MediaUploader({ listingId, media, labels }: {
+export function MediaUploader({ listingId, media, labels, onChanged }: {
   listingId: string;
   media: Media[];
   labels: { upload: string; delete: string; uploading: string };
+  onChanged: () => Promise<void>;
 }) {
-  const sb = createClient();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function upload(file: File) {
+    const sb = createClient();
     setError(null);
     if (!ACCEPTED.includes(file.type)) { setError("Unsupported file type"); return; }
     if (file.size > MAX_BYTES) { setError("File too large (max 10 MB)"); return; }
@@ -61,6 +62,7 @@ export function MediaUploader({ listingId, media, labels }: {
         sort_order: nextOrder,
       });
       if (rowErr) throw rowErr;
+      await onChanged();
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
@@ -71,6 +73,7 @@ export function MediaUploader({ listingId, media, labels }: {
   }
 
   async function remove(m: Media) {
+    const sb = createClient();
     setBusy(true);
     setError(null);
     try {
@@ -82,6 +85,7 @@ export function MediaUploader({ listingId, media, labels }: {
       }
       const { error: delErr } = await sb.from("listing_media").delete().eq("id", m.id);
       if (delErr) throw delErr;
+      await onChanged();
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
@@ -91,6 +95,7 @@ export function MediaUploader({ listingId, media, labels }: {
   }
 
   async function move(m: Media, dir: -1 | 1) {
+    const sb = createClient();
     const idx = media.findIndex((x) => x.id === m.id);
     const swap = media[idx + dir];
     if (!swap) return;
@@ -110,6 +115,10 @@ export function MediaUploader({ listingId, media, labels }: {
 
   return (
     <div>
+      <div className="mb-4 rounded-xl border border-lagoon-100 bg-lagoon-50 p-4 text-sm text-lagoon-800">
+        <p className="font-semibold">Képek és videók</p>
+        <p className="mt-1">Legalább 3 jó minőségű kép szükséges. Az első kép lesz a program főképe. JPG, PNG, WebP vagy MP4, legfeljebb 10 MB.</p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {media.map((m, i) => (
           <div key={m.id} className="overflow-hidden rounded-xl border border-sand-200 bg-white">
