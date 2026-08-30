@@ -1,5 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://myiezjdtsphfkrdyzysh.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_WyKZSTPZmoyTshrWqq59jA_K16GttSo",
+    "NEXT_PUBLIC_SITE_URL": "https://travendiq.com",
+    "NEXT_PUBLIC_DEFAULT_LOCALE": "en",
+    "NEXT_PUBLIC_DEFAULT_CURRENCY": "EUR"
+  },
   "crons": [
     {
       "path": "/api/cron/email-outbox",
