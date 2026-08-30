@@ -66,6 +66,7 @@ export default async function AdminDashboard({ params }: { params: { locale: Loc
         <Link className="btn-secondary" href={`/${locale}/admin/reviews`}>{hu ? "Értékelések" : "Reviews"}</Link>
         <Link className="btn-secondary" href={`/${locale}/admin/taxonomy`}>{hu ? "Törzsadatok" : "Taxonomy"}</Link>
         <Link className="btn-secondary" href={`/${locale}/admin/cms`}>CMS</Link>
+        <Link className="btn-secondary" href={`/${locale}/admin/newsletter`}>{hu ? "Hírlevél-feliratkozók" : "Newsletter subscribers"}</Link>
         <Link className="btn-secondary" href={`/${locale}/admin/logs`}>{hu ? "Naplók" : "Logs"}</Link>
         <Link className="btn-secondary" href={`/${locale}/admin/security`}>2FA</Link>
       </div>

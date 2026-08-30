@@ -18,7 +18,12 @@ export function MapView({ items, locale }: {
   locale: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const locationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const [failed, setFailed] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const pts = useMemo(() => items.filter((i) => i.lat != null && i.lng != null), [items]);
 
   const fallbackBounds = pts.length
@@ -34,7 +39,12 @@ export function MapView({ items, locale }: {
         ];
       })()
     : [-12, 32, 42, 64];
-  const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${fallbackBounds.join("%2C")}&layer=mapnik`;
+  const shownBounds = userLocation
+    ? [userLocation[0] - 0.08, userLocation[1] - 0.05, userLocation[0] + 0.08, userLocation[1] + 0.05]
+    : fallbackBounds;
+  const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${shownBounds.join("%2C")}&layer=mapnik${
+    userLocation ? `&marker=${userLocation[1]}%2C${userLocation[0]}` : ""
+  }`;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -61,6 +71,7 @@ export function MapView({ items, locale }: {
         center,
         zoom: pts.length ? 10 : 3,
       });
+      mapRef.current = map;
     } catch {
       setFailed(true);
       return;
@@ -83,20 +94,67 @@ export function MapView({ items, locale }: {
         ))
         .addTo(map);
     }
-    return () => map.remove();
+    return () => {
+      mapRef.current = null;
+      locationMarkerRef.current = null;
+      map.remove();
+    };
   }, [pts, locale]);
 
-  if (failed) {
-    return (
-      <iframe
-        className="h-[560px] w-full rounded-2xl border border-lagoon-100"
-        src={fallbackMapUrl}
-        title={locale === "hu" ? "Keresési térkép" : "Search map"}
-        loading="lazy"
-        referrerPolicy="strict-origin-when-cross-origin"
-      />
+  function locateUser() {
+    setLocationError(false);
+    if (!navigator.geolocation) {
+      setLocationError(true);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const position: [number, number] = [coords.longitude, coords.latitude];
+        setUserLocation(position);
+        const map = mapRef.current;
+        if (map) {
+          locationMarkerRef.current?.remove();
+          locationMarkerRef.current = new maplibregl.Marker({ color: "#f97316" })
+            .setLngLat(position)
+            .addTo(map);
+          map.flyTo({ center: position, zoom: 13 });
+        }
+        setLocating(false);
+      },
+      () => {
+        setLocating(false);
+        setLocationError(true);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }
 
-  return <div ref={ref} className="h-[560px] w-full rounded-2xl border border-lagoon-100" role="application" aria-label="Map" />;
+  const locationButton = (
+    <div className="absolute bottom-4 left-4 z-10">
+      <button type="button" onClick={locateUser} disabled={locating}
+        className="rounded-xl border border-lagoon-200 bg-white px-4 py-2 text-sm font-semibold text-lagoon-900 shadow-md hover:bg-sand-50 disabled:opacity-60">
+        {locating ? (locale === "hu" ? "Helyzet keresése…" : "Locating…") : (locale === "hu" ? "Saját helyzet" : "My location")}
+      </button>
+      {locationError && <p className="mt-1 rounded bg-white px-2 py-1 text-xs text-red-700 shadow">
+        {locale === "hu" ? "A helyzet nem érhető el. Engedélyezd a helymeghatározást." : "Location is unavailable. Allow location access."}
+      </p>}
+    </div>
+  );
+
+  if (failed) {
+    return (
+      <div className="relative">
+        <iframe className="h-[560px] w-full rounded-2xl border border-lagoon-100"
+          src={fallbackMapUrl} title={locale === "hu" ? "Keresési térkép" : "Search map"}
+          loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
+        {locationButton}
+      </div>
+    );
+  }
+
+  return <div className="relative">
+    <div ref={ref} className="h-[560px] w-full rounded-2xl border border-lagoon-100" role="application" aria-label="Map" />
+    {locationButton}
+  </div>;
 }

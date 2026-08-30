@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { error } = await sb.from("newsletter_subscribers")
-    .upsert({ email, locale }, { onConflict: "email" });
+    .upsert({ email, locale, is_active: true, unsubscribed_at: null, consented_at: new Date().toISOString() }, { onConflict: "email" });
   if (error) {
     // DB-hiba → NEM hamis siker: hiba-paraméter + naplózás
     console.error("[newsletter] upsert failed:", error.message);
