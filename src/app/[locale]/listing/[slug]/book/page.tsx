@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { BookingForm } from "./BookingForm";
+import { MARKETPLACE_LIVE } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ export default async function BookPage({
   params: { locale: Locale; slug: string };
   searchParams: { date?: string; time?: string; adults?: string; children?: string; infants?: string; option?: string; error?: string };
 }) {
+  if (!MARKETPLACE_LIVE) notFound();
   const { locale, slug } = params;
   const t = getDictionary(locale);
   const supabase = createClient();
