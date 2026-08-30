@@ -35,12 +35,15 @@ export async function GET(req: NextRequest) {
   const errors: string[] = [];
   for (const row of rows) {
     try {
-      await sendEmail({
+      const sendResult = await sendEmail({
         to: row.to_email,
         template: row.template as EmailTemplate,
         locale: row.locale,
         vars: row.vars as EmailVars,
       });
+      if (!sendResult.ok) {
+        throw new Error(sendResult.error ?? "email_send_failed");
+      }
       // KRITIKUS: a küldés MÁR megtörtént – a 'sent' státuszmentés hibája NEM
       // jelentheti azt, hogy az email "nem ment ki" (az újra-claim duplikálna).
       // A sor 'sending' állapotban marad, és a lock-timeout után újra
