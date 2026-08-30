@@ -8,6 +8,24 @@ type Media = { id: string; url: string; kind: string; sort_order: number };
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"];
 
+async function optimize(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.size < 700 * 1024) return file;
+  try {
+    const image = await createImageBitmap(file);
+    const scale = Math.min(1, 1800 / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" });
+  } catch { return file; }
+}
+
 export function MediaUploader({ listingId, media, labels }: {
   listingId: string; media: Media[];
   labels: { upload: string; delete: string; uploading: string };
@@ -25,7 +43,11 @@ export function MediaUploader({ listingId, media, labels }: {
     if (files.some((file) => file.size > MAX_BYTES)) { setError("Egy fájl legfeljebb 10 MB lehet."); return; }
     setBusy(true);
     try {
-      const body = new FormData(); files.forEach((file) => body.append("files", file));
+      setMessage("Képek optimalizálása…");
+      const optimized: File[] = [];
+      for (const file of files) optimized.push(await optimize(file));
+      setMessage(`${files.length} fájl feltöltése…`);
+      const body = new FormData(); optimized.forEach((file) => body.append("files", file));
       const response = await fetch(`/api/provider/listings/${listingId}/media`, { method: "POST", body });
       const result = await response.json() as { error?: string };
       if (!response.ok) throw new Error(result.error || "A feltöltés nem sikerült.");
