@@ -10,6 +10,7 @@ import { escapeHtml } from "@/lib/escape";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.EMAIL_FROM ?? "Travendiq <no-reply@travendiq.com>";
+const SUPPORT_FROM = process.env.SUPPORT_EMAIL_FROM ?? "Travendiq Support <support@travendiq.com>";
 const IS_PROD = process.env.NODE_ENV === "production";
 
 export type EmailTemplate =
@@ -44,9 +45,9 @@ const en: TplSet = {
   registration: { subject: "Welcome to Travendiq", body: (v) => `<p>Hi ${e(v.name)},</p><p>your Travendiq account is ready. Discover and book experiences worldwide.</p>` },
   email_confirmation: { subject: "Confirm your Travendiq account", body: (v) => `<p>Welcome to Travendiq${v.name ? `, ${e(v.name)}` : ""}.</p><p>Please confirm your email address to activate your account and start discovering experiences.</p>${v.link ? btn(v.link, "Confirm my email") : ""}<p style="margin-top:20px;color:#6b7280;font-size:12px">This secure link can only be used once. If you did not create a Travendiq account, you can safely ignore this email.</p>` },
   provider_application: { subject: "Provider application received", body: () => `<p>Thank you for applying as a Travendiq provider. Our team will review your application and documents. You can publish paid experiences after approval.</p>` },
-  provider_docs_required: { subject: "Additional documents required", body: (v) => `<p>We need additional documents to verify your provider account:</p><p><b>${e(v.missingDocs)}</b></p><p>Please upload them in your provider dashboard.</p>` },
+  provider_docs_required: { subject: "Additional documents required", body: (v) => `<p>We need additional documents or corrections to verify your provider account:</p><p><b>${e(v.missingDocs)}</b></p><p>Please review the administrator's note and upload the corrected documents in your provider dashboard.</p>${v.link ? btn(v.link, "Open provider documents") : ""}` },
   provider_approved: { subject: "Your provider account is approved", body: (v) => `<p>Great news${v.name ? `, ${e(v.name)}` : ""}! Your provider account has been approved. You can now publish and sell experiences on Travendiq.</p>` },
-  provider_rejected: { subject: "Provider application update", body: (v) => `<p>Unfortunately we could not approve your provider application at this time.</p>${v.reason ? `<p>Reason: ${e(v.reason)}</p>` : ""}<p>You may re-apply after resolving the issues above.</p>` },
+  provider_rejected: { subject: "Provider application update", body: (v) => `<p>Unfortunately we could not approve your provider application at this time.</p>${v.reason ? `<p>Reason: ${e(v.reason)}</p>` : ""}<p>The application remains visible in your provider account.</p>${v.link ? btn(v.link, "Open provider documents") : ""}` },
   provider_team_invitation: { subject: "You have been invited to a Travendiq provider team", body: (v) => `<p><b>${e(v.name)}</b> invited you to join their Travendiq provider team.</p><p>Sign in or create an account with this email address, then accept the invitation.</p>${v.link ? btn(v.link, "Open invitation") : ""}<p style="margin-top:20px;color:#6b7280;font-size:12px">This invitation expires in 7 days.</p>` },
   booking_confirmation: { subject: "Booking confirmed – {{code}}", body: (v) => `<p>Thank you for your booking!</p><p><b>Booking code:</b> ${e(v.code)}</p><p><b>${e(v.title)}</b><br/>${e(v.date)} ${e(v.time ?? "")}</p>${v.meetingPoint ? `<p><b>Meeting point:</b> ${e(v.meetingPoint)}</p>` : ""}${v.voucher ? btn(v.voucher, "Download voucher") : ""}${v.link ? btn(v.link, "View booking") : ""}` },
   payment_receipt: { subject: "Payment receipt – {{code}}", body: (v) => `<p>We received your payment of <b>${e(v.amount)} ${e(v.currency)}</b> for booking <b>${e(v.code)}</b>.</p><p>This email serves as your payment confirmation.</p>${v.link ? btn(v.link, "View booking") : ""}` },
@@ -64,9 +65,9 @@ const hu: TplSet = {
   registration: { subject: "Üdv a Travendiqnél", body: (v) => `<p>Szia${v.name ? ` ${e(v.name)}` : ""}!</p><p>a Travendiq-fiókod elkészült. Fedezz fel és foglalj élményeket világszerte.</p>` },
   email_confirmation: { subject: "Erősítsd meg az emailed", body: (v) => `<p>Kérjük, erősítsd meg az emailcímed a fiók befejezéséhez.</p>${v.link ? btn(v.link, "Email megerősítése") : ""}` },
   provider_application: { subject: "Szolgáltatói jelentkezés megérkezett", body: () => `<p>Köszönjük a szolgáltatói jelentkezést! Csapatunk ellenőrzi az adatokat és dokumentumokat. Jóváhagyás után publikálhatsz fizetős programokat.</p>` },
-  provider_docs_required: { subject: "További dokumentum szükséges", body: (v) => `<p>A fiókod ellenőrzéséhez további dokumentumokra van szükség:</p><p><b>${e(v.missingDocs)}</b></p><p>Kérjük, töltsd fel őket a szolgáltatói felületen.</p>` },
+  provider_docs_required: { subject: "Dokumentumpótlás szükséges", body: (v) => `<p>A szolgáltatói fiókod ellenőrzéséhez javításra vagy további dokumentumra van szükség:</p><p><b>${e(v.missingDocs)}</b></p><p>Kérjük, ellenőrizd az adminisztrátori megjegyzést, majd töltsd fel a javított dokumentumot.</p>${v.link ? btn(v.link, "Dokumentumok megnyitása") : ""}` },
   provider_approved: { subject: "Szolgáltatói fiókod jóváhagyva", body: (v) => `<p>Jó hír${v.name ? `, ${e(v.name)}` : ""}! A szolgáltatói fiókodat jóváhagytuk – mostantól értékesíthetsz programokat a Travendiqen.</p>` },
-  provider_rejected: { subject: "Szolgáltatói jelentkezés – tájékoztatás", body: (v) => `<p>Sajnos ezúttal nem tudtuk jóváhagyni a szolgáltatói jelentkezésed.</p>${v.reason ? `<p>Indok: ${e(v.reason)}</p>` : ""}<p>A problémák rendezése után újra jelentkezhetsz.</p>` },
+  provider_rejected: { subject: "Szolgáltatói jelentkezés elutasítva", body: (v) => `<p>Sajnos ezúttal nem tudtuk jóváhagyni a szolgáltatói jelentkezésed.</p>${v.reason ? `<p><b>Indok:</b> ${e(v.reason)}</p>` : ""}<p>A jelentkezés és az adminisztrátori megjegyzés továbbra is látható a szolgáltatói fiókodban.</p>${v.link ? btn(v.link, "Szolgáltatói dokumentumok") : ""}` },
   provider_team_invitation: { subject: "Meghívást kaptál egy Travendiq szolgáltatói csapatba", body: (v) => `<p><b>${e(v.name)}</b> meghívott a Travendiq szolgáltatói csapatába.</p><p>Jelentkezz be vagy hozz létre fiókot ezzel az email-címmel, majd fogadd el a meghívást.</p>${v.link ? btn(v.link, "Meghívás megnyitása") : ""}<p style="margin-top:20px;color:#6b7280;font-size:12px">A meghívás 7 napig érvényes.</p>` },
   booking_confirmation: { subject: "Foglalás visszaigazolva – {{code}}", body: (v) => `<p>Köszönjük a foglalást!</p><p><b>Foglalási azonosító:</b> ${e(v.code)}</p><p><b>${e(v.title)}</b><br/>${e(v.date)} ${e(v.time ?? "")}</p>${v.meetingPoint ? `<p><b>Találkozási pont:</b> ${e(v.meetingPoint)}</p>` : ""}${v.voucher ? btn(v.voucher, "Voucher letöltése") : ""}${v.link ? btn(v.link, "Foglalás megnyitása") : ""}` },
   payment_receipt: { subject: "Fizetési visszaigazolás – {{code}}", body: (v) => `<p>Megérkezett a fizetésed: <b>${e(v.amount)} ${e(v.currency)}</b> – foglalás: <b>${e(v.code)}</b>.</p><p>Ez az email a fizetés visszaigazolásaként szolgál.</p>${v.link ? btn(v.link, "Foglalás megnyitása") : ""}` },
@@ -132,6 +133,7 @@ export async function sendEmail(
   opts: { retries?: number } = {}
 ): Promise<{ ok: boolean; simulated: boolean }> {
   const { subject, html } = renderEmail(input);
+  const from = input.template.startsWith("provider_") ? SUPPORT_FROM : FROM;
 
   if (!resend) {
     if (IS_PROD) {
@@ -144,7 +146,7 @@ export async function sendEmail(
 
   const retries = opts.retries ?? 2;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const { data, error } = await resend.emails.send({ from: FROM, to: input.to, subject, html });
+    const { data, error } = await resend.emails.send({ from, to: input.to, subject, html });
     if (!error) {
       await logEmail({ to: input.to, template: input.template, locale: input.locale ?? "en", status: "sent", providerMessageId: data?.id });
       return { ok: true, simulated: false };

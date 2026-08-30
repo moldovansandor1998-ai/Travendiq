@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createHash, randomBytes } from "node:crypto";
+import { sendEmail } from "@/lib/email";
 
 const ALL_PERMISSIONS = ["bookings.read", "bookings.write", "listings.write", "checkin", "finance.read"] as const;
 
@@ -42,6 +43,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
       const token = randomBytes(32).toString("base64url");
       const tokenHash = createHash("sha256").update(token).digest("hex");
       await svc.from("provider_team_invitations").delete().eq("provider_id", prov.id).eq("email", email).is("accepted_at", null);
+      await svc.from("email_outbox").delete().eq("dedupe_key", `provider_team_invite:${prov.id}:${email}`).eq("status", "pending");
       const { error: inviteErr } = await svc.from("provider_team_invitations").insert({
         provider_id: prov.id, email, permissions: perms, token_hash: tokenHash,
         invited_by: u.id, expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
@@ -52,12 +54,8 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
       }
       const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.travendiq.com";
       const link = `${base}/${locale}/provider/team/accept?token=${encodeURIComponent(token)}`;
-      const { error: emailErr } = await svc.rpc("enqueue_email", {
-        p_dedupe_key: `provider_team_invite:${prov.id}:${email}`,
-        p_to: email, p_template: "provider_team_invitation", p_locale: locale,
-        p_vars: { name: providerName, link },
-      });
-      if (emailErr) console.error("[provider/team] invitation email failed:", emailErr.message);
+      const result = await sendEmail({ to: email, template: "provider_team_invitation", locale, vars: { name: providerName, link } });
+      if (!result.ok) redirect(`/${locale}/provider/team?error=email`);
       redirect(`/${locale}/provider/team?invited=1`);
     }
     // DB-hiba nem csendes: hamis "tag hozzáadva" állapot tiltva
@@ -101,6 +99,28 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
     revalidatePath(`/${locale}/provider/team`);
   }
 
+  async function resendInvitation(formData: FormData) {
+    "use server";
+    const session = createClient();
+    const { data: { user: u } } = await session.auth.getUser();
+    if (!u) redirect(`/${locale}/auth/login`);
+    const svc = createServiceClient();
+    const { data: prov } = await svc.from("providers").select("id,display_name").eq("owner_id", u.id).maybeSingle();
+    if (!prov) throw new Error("forbidden");
+    const invitationId = String(formData.get("invitation_id") ?? "");
+    const { data: invitation } = await svc.from("provider_team_invitations").select("id,email").eq("id", invitationId).eq("provider_id", prov.id).is("accepted_at", null).single();
+    if (!invitation) redirect(`/${locale}/provider/team?error=invite`);
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
+    await svc.from("provider_team_invitations").update({ token_hash: tokenHash, expires_at: expiresAt }).eq("id", invitation.id);
+    await svc.from("email_outbox").delete().eq("dedupe_key", `provider_team_invite:${prov.id}:${invitation.email}`).eq("status", "pending");
+    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.travendiq.com";
+    const link = `${base}/${locale}/provider/team/accept?token=${encodeURIComponent(token)}`;
+    const result = await sendEmail({ to: invitation.email, template: "provider_team_invitation", locale, vars: { name: prov.display_name, link } });
+    redirect(`/${locale}/provider/team?${result.ok ? "invited=1" : "error=email"}`);
+  }
+
   const permLabels: Record<string, string> = {
     "bookings.read": pt.perm_bookings_read, "bookings.write": pt.perm_bookings_write,
     "listings.write": pt.perm_listings_write, checkin: pt.perm_checkin,
@@ -112,7 +132,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
       <h1 className="text-2xl font-bold text-lagoon-950">{pt.title}</h1>
       {searchParams.invited === "1" && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{locale === "hu" ? "A munkatársi meghívót elküldtük emailben. A meghívott a link elfogadása után jelenik meg a csapatban." : "Invitation sent by email. The member will appear after accepting it."}</p>}
       {searchParams.added === "1" && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{locale === "hu" ? "A regisztrált munkatársat hozzáadtuk." : "The registered team member was added."}</p>}
-      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A meghívás nem sikerült. Próbáld újra." : "Invitation failed. Please try again."}</p>}
+      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{searchParams.error === "email" ? (locale === "hu" ? "A meghívás létrejött, de az email küldése nem sikerült. Használd az Újraküldés gombot." : "The invitation was created, but email delivery failed. Use Resend.") : (locale === "hu" ? "A meghívás nem sikerült. Próbáld újra." : "Invitation failed. Please try again.")}</p>}
 
       <form action={addMember} className="card mt-6 p-5">
         <h2 className="font-semibold text-lagoon-900">{pt.addTitle}</h2>
@@ -136,7 +156,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
         <button className="btn-primary mt-4" type="submit">{pt.add}</button>
       </form>
 
-      {(invitations ?? []).length > 0 && <div className="card mt-6 divide-y divide-lagoon-100"><h2 className="p-4 font-semibold text-lagoon-900">{locale === "hu" ? "Függőben lévő meghívások" : "Pending invitations"}</h2>{(invitations ?? []).map((i) => <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm"><span>{i.email}</span><span className="badge bg-amber-100 text-amber-800">{locale === "hu" ? `Lejár: ${new Date(i.expires_at).toLocaleDateString("hu-HU")}` : `Expires: ${new Date(i.expires_at).toLocaleDateString("en-GB")}`}</span></div>)}</div>}
+      {(invitations ?? []).length > 0 && <div className="card mt-6 divide-y divide-lagoon-100"><h2 className="p-4 font-semibold text-lagoon-900">{locale === "hu" ? "Függőben lévő meghívások" : "Pending invitations"}</h2>{(invitations ?? []).map((i) => <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm"><span>{i.email}</span><div className="flex items-center gap-2"><span className="badge bg-amber-100 text-amber-800">{locale === "hu" ? `Lejár: ${new Date(i.expires_at).toLocaleDateString("hu-HU")}` : `Expires: ${new Date(i.expires_at).toLocaleDateString("en-GB")}`}</span><form action={resendInvitation}><input type="hidden" name="invitation_id" value={i.id}/><button className="btn-secondary px-3 py-1.5 text-xs">{locale === "hu" ? "Újraküldés" : "Resend"}</button></form></div></div>)}</div>}
 
       <div className="card mt-6 divide-y divide-lagoon-100">
         {(members ?? []).map((m) => {

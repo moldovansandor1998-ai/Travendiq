@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { requireAdmin, audit } from "@/lib/admin";
+import { sendEmail } from "@/lib/email";
 
 const REQUIRED = ["company_reg", "id_card", "bank_statement"];
 const labels: Record<string, [string, string]> = {
@@ -20,8 +21,8 @@ export default async function AdminProvidersPage({ params, searchParams }: {
   const t = getDictionary(locale);
   const { svc } = await requireAdmin(locale);
   const { data: providers } = await svc.from("providers")
-    .select("id,legal_name,display_name,country_code,city,status,contact_email,contact_name,contact_phone,tax_id")
-    .in("status", ["under_review", "docs_required", "incomplete"]).order("created_at");
+    .select("id,legal_name,display_name,country_code,city,status,review_note,contact_email,contact_name,contact_phone,tax_id")
+    .in("status", ["under_review", "docs_required", "incomplete", "rejected"]).order("created_at");
   const ids = (providers ?? []).map((p) => p.id);
   const [{ data: docs }, { data: payouts }, { data: agreements }] = ids.length ? await Promise.all([
     svc.from("provider_documents").select("id,provider_id,kind,file_path,status,note,created_at").in("provider_id", ids).order("created_at", { ascending: false }),
@@ -40,7 +41,9 @@ export default async function AdminProvidersPage({ params, searchParams }: {
     const { user, svc: s } = await requireAdmin(locale);
     const id = String(formData.get("id") ?? "");
     const action = String(formData.get("action") ?? "");
+    const reason = String(formData.get("reason") ?? "").trim();
     const status = action === "approve" ? "approved" : action === "docs" ? "docs_required" : "rejected";
+    if (status !== "approved" && !reason) throw new Error("reason required");
     if (status === "approved") {
       const [{ data: verified }, { data: payout }, { data: agreement }] = await Promise.all([
         s.from("provider_documents").select("kind").eq("provider_id", id).eq("status", "verified"),
@@ -50,8 +53,18 @@ export default async function AdminProvidersPage({ params, searchParams }: {
       const kinds = new Set((verified ?? []).map((d) => d.kind));
       if (REQUIRED.some((kind) => !kinds.has(kind)) || !payout || !agreement) redirect(`/${locale}/admin/providers?error=documents`);
     }
-    await s.from("providers").update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq("id", id);
-    await audit(s, { actorId: user.id, action: `provider.${status}`, entity: "providers", entityId: id });
+    const { data: provider } = await s.from("providers").select("contact_email,display_name").eq("id", id).single();
+    await s.from("providers").update({ status, review_note: reason || null, reviewed_by: user.id, reviewed_at: new Date().toISOString() }).eq("id", id);
+    await audit(s, { actorId: user.id, action: `provider.${status}`, entity: "providers", entityId: id, diff: reason ? { reason } : undefined });
+    if (provider?.contact_email) {
+      const result = await sendEmail({
+        to: provider.contact_email,
+        template: status === "approved" ? "provider_approved" : status === "docs_required" ? "provider_docs_required" : "provider_rejected",
+        locale,
+        vars: { name: provider.display_name, reason, missingDocs: reason, link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.travendiq.com"}/${locale}/provider/documents` },
+      });
+      if (!result.ok) redirect(`/${locale}/admin/providers?error=email`);
+    }
     revalidatePath(`/${locale}/admin/providers`);
   }
 
@@ -68,12 +81,20 @@ export default async function AdminProvidersPage({ params, searchParams }: {
       reviewed_by: user.id, reviewed_at: new Date().toISOString(),
     }).eq("id", id).eq("provider_id", providerId);
     await audit(s, { actorId: user.id, action: `kyc.${action}`, entity: "provider_documents", entityId: id });
+    if (action === "reject") {
+      const { data: provider } = await s.from("providers").select("contact_email,display_name").eq("id", providerId).single();
+      if (provider?.contact_email) await sendEmail({
+        to: provider.contact_email, template: "provider_docs_required", locale,
+        vars: { name: provider.display_name, missingDocs: note ?? (hu ? "A beküldött dokumentum nem fogadható el." : "The submitted document could not be accepted."), link: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.travendiq.com"}/${locale}/provider/documents` },
+      });
+    }
     revalidatePath(`/${locale}/admin/providers`);
   }
 
   return <div className="container-page py-10">
     <h1 className="text-2xl font-bold text-lagoon-950">{t.admin.pendingProviders}</h1>
     {searchParams.error === "documents" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{hu ? "Jóváhagyás előtt mindhárom dokumentumot ellenőrizni kell, továbbá szükséges a bankszámla és a szerződés elfogadása." : "Verify all three documents and confirm payout details and agreement before approval."}</p>}
+    {searchParams.error === "email" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{hu ? "Az állapot elmentve, de az értesítő email küldése nem sikerült." : "Status saved, but the notification email could not be sent."}</p>}
     <div className="mt-6 space-y-6">
       {(providers ?? []).map((p) => {
         const providerDocs = (docs ?? []).filter((d) => d.provider_id === p.id);
@@ -85,13 +106,20 @@ export default async function AdminProvidersPage({ params, searchParams }: {
               <h2 className="text-lg font-bold text-lagoon-950">{p.display_name} <span className="font-normal text-lagoon-500">({p.legal_name})</span></h2>
               <p className="mt-1 text-sm text-lagoon-700">{p.country_code} · {p.city} · {p.contact_email} · {p.contact_phone}</p>
               <p className="mt-1 text-xs text-lagoon-500">{hu ? "Kapcsolattartó" : "Contact"}: {p.contact_name} · {hu ? "Adószám" : "Tax ID"}: {p.tax_id} · {p.status}</p>
+              {p.review_note && <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-800">{hu ? "Admin megjegyzés" : "Admin note"}: {p.review_note}</p>}
             </div>
-            <form action={reviewProvider} className="flex flex-wrap gap-2">
+            <div className="flex max-w-xl flex-wrap justify-end gap-2">
+            <form action={reviewProvider}>
               <input type="hidden" name="id" value={p.id}/>
               <button name="action" value="approve" className="btn-primary px-4 py-2">{t.admin.approve}</button>
+            </form>
+            <form action={reviewProvider} className="flex flex-wrap justify-end gap-2">
+              <input type="hidden" name="id" value={p.id}/>
+              <input name="reason" required defaultValue={p.review_note ?? ""} placeholder={hu ? "Megjegyzés / elutasítás oka" : "Note / rejection reason"} className="input min-w-64 py-2 text-sm"/>
               <button name="action" value="docs" className="btn-secondary px-4 py-2">{hu ? "Pótlás kérése" : "Request documents"}</button>
               <button name="action" value="reject" className="btn-secondary px-4 py-2 text-red-700">{t.admin.reject}</button>
             </form>
+            </div>
           </div>
           <div className="grid gap-4 p-5 lg:grid-cols-3">
             {REQUIRED.map((kind) => {

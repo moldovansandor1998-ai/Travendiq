@@ -14,7 +14,7 @@ export default async function ProviderDocuments({ params, searchParams }: { para
   const sb = createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
-  const { data: provider } = await sb.from("providers").select("id, status").eq("owner_id", user.id).maybeSingle();
+  const { data: provider } = await sb.from("providers").select("id, status, review_note").eq("owner_id", user.id).maybeSingle();
   if (!provider) redirect(`/${locale}/provider/register`);
   const providerId = provider.id;
 
@@ -39,6 +39,16 @@ export default async function ProviderDocuments({ params, searchParams }: { para
   const today = new Date().toISOString().slice(0, 10);
   const requiredKinds = ["company_reg", "id_card", "bank_statement"];
   const documentRows = docs ?? [];
+  const submittedRequired = requiredKinds.filter((kind) => documentRows.some((d) => d.kind === kind && d.status !== "rejected")).length;
+  const verificationLabel = provider.status === "approved"
+    ? (locale === "hu" ? "Jóváhagyva" : "Approved")
+    : provider.status === "rejected"
+      ? (locale === "hu" ? "Elutasítva" : "Rejected")
+      : submittedRequired === requiredKinds.length
+        ? (locale === "hu" ? "Ellenőrzés alatt" : "Under review")
+        : submittedRequired === 0
+          ? (locale === "hu" ? "Dokumentumokra vár" : "Waiting for documents")
+          : (locale === "hu" ? "Beküldés folyamatban" : "Documents incomplete");
 
   async function saveVerification(formData: FormData) {
     "use server";
@@ -69,8 +79,9 @@ export default async function ProviderDocuments({ params, searchParams }: { para
       <div className="card mt-5 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-sm font-semibold text-lagoon-950">{locale === "hu" ? "Cégellenőrzés állapota" : "Company verification status"}</p><p className="mt-1 text-sm text-lagoon-600">{locale === "hu" ? "A kötelező iratok ellenőrzése után az adminisztrátor hagyja jóvá a céget." : "An administrator approves the company after all required documents are verified."}</p></div>
-          <span className={`badge ${provider.status === "approved" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>{provider.status === "approved" ? (locale === "hu" ? "Jóváhagyva" : "Approved") : (locale === "hu" ? "Ellenőrzés alatt" : "Under review")}</span>
+          <span className={`badge ${provider.status === "approved" ? "bg-emerald-100 text-emerald-800" : provider.status === "rejected" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-900"}`}>{verificationLabel}</span>
         </div>
+        {provider.review_note && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{locale === "hu" ? "Admin megjegyzés" : "Administrator note"}: {provider.review_note}</p>}
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {requiredKinds.map((kind) => {
             const rows = documentRows.filter((d) => d.kind === kind);
