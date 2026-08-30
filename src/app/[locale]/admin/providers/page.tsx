@@ -100,7 +100,19 @@ export default async function AdminProvidersPage({ params, searchParams }: {
         const providerDocs = (docs ?? []).filter((d) => d.provider_id === p.id);
         const payout = (payouts ?? []).find((row) => row.provider_id === p.id);
         const agreement = (agreements ?? []).find((row) => row.provider_id === p.id);
-        return <section key={p.id} className="card overflow-hidden">
+        const documentIssues = REQUIRED.filter((kind) => providerDocs.find((d) => d.kind === kind)?.status !== "verified").length;
+        const issueCount = documentIssues + (payout ? 0 : 1) + (agreement ? 0 : 1);
+        return <details key={p.id} className="group card overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 hover:bg-lagoon-50 sm:px-5">
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-lg font-black ${issueCount ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>{issueCount ? "!" : "✓"}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold text-lagoon-950">{p.display_name}</h2><span className="hidden truncate text-sm text-lagoon-500 sm:inline">{p.legal_name}</span></div>
+              <p className="truncate text-xs text-lagoon-600">{p.country_code} · {p.city} · {p.contact_email}</p>
+            </div>
+            <span className={`badge shrink-0 ${issueCount ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>{issueCount ? (hu ? `${issueCount} teendő` : `${issueCount} actions`) : (hu ? "Nincs teendő" : "No action")}</span>
+            <span className="text-xl text-lagoon-500 transition group-open:rotate-45">＋</span>
+          </summary>
+          <div className="border-t border-lagoon-100">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-lagoon-100 p-5">
             <div>
               <h2 className="text-lg font-bold text-lagoon-950">{p.display_name} <span className="font-normal text-lagoon-500">({p.legal_name})</span></h2>
@@ -145,7 +157,8 @@ export default async function AdminProvidersPage({ params, searchParams }: {
             <div><h3 className="text-sm font-semibold text-lagoon-950">{hu ? "Kifizetési bankszámla" : "Payout bank account"}</h3>{payout ? <dl className="mt-2 grid grid-cols-2 gap-1 text-xs text-lagoon-700"><dt>{hu ? "Tulajdonos" : "Holder"}</dt><dd>{payout.account_holder_name}</dd><dt>Bank</dt><dd>{payout.bank_name}</dd><dt>IBAN</dt><dd className="break-all font-mono">{payout.iban}</dd><dt>SWIFT/BIC</dt><dd className="font-mono">{payout.swift_bic}</dd><dt>{hu ? "Pénznem" : "Currency"}</dt><dd>{payout.currency} · {payout.bank_country_code}</dd></dl> : <p className="mt-2 text-xs font-semibold text-amber-700">{hu ? "Még nincs elmentve." : "Not saved yet."}</p>}</div>
             <div><h3 className="text-sm font-semibold text-lagoon-950">{hu ? "Szolgáltatói szerződés" : "Provider agreement"}</h3>{agreement ? <p className="mt-2 text-xs text-lagoon-700">{agreement.accepted_name} · {agreement.agreement_version} · {new Date(agreement.accepted_at).toLocaleString(locale)}</p> : <p className="mt-2 text-xs font-semibold text-amber-700">{hu ? "Még nincs elfogadva." : "Not accepted yet."}</p>}</div>
           </div>
-        </section>;
+          </div>
+        </details>;
       })}
       {(providers ?? []).length === 0 && <div className="card p-6 text-sm text-lagoon-500">–</div>}
     </div>
