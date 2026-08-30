@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { MARKETPLACE_LIVE } from "@/lib/launch";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { bookingInputSchema } from "@/lib/validation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -16,6 +17,7 @@ import { verifyAffiliateCookie } from "@/lib/affiliate-cookie";
  * kliensoldali csalás technikailag kizárt.
  */
 export async function POST(req: NextRequest) {
+  if (!MARKETPLACE_LIVE) return NextResponse.json({ error: "marketplace_not_live" }, { status: 503 });
   const sb = createServiceClient();
 
   const ip = clientIp(req);
