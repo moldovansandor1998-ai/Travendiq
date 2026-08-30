@@ -34,3 +34,16 @@ export async function rateLimit(
   }
   return data === true;
 }
+
+/**
+ * Visszavon egy korábban lefoglalt próbálkozást, ha a védett művelet
+ * külső szolgáltatási hiba miatt nem tudott befejeződni.
+ */
+export async function releaseRateLimit(sb: Svc, key: string): Promise<void> {
+  const { error } = await sb.rpc("release_rate_limit", {
+    p_key: key.slice(0, 120),
+  });
+  if (error) {
+    console.error(`[rateLimit/release] ${key.slice(0, 40)}…: ${error.message}`);
+  }
+}
