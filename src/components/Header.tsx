@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
+  const marketplaceLive = process.env.NEXT_PUBLIC_MARKETPLACE_LIVE === "true";
   const sb = createClient();
   const { data: { user } } = await sb.auth.getUser();
   let isAdmin = false;
@@ -34,7 +35,7 @@ export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
           <Logo />
         </Link>
 
-        <nav className="hidden items-center gap-1 text-sm font-semibold text-ink-700 lg:flex">
+        {marketplaceLive && <nav className="hidden items-center gap-1 text-sm font-semibold text-ink-700 lg:flex">
           <Link href={`/${locale}/search`} className="rounded-xl px-3.5 py-2 transition hover:bg-ink-50 hover:text-ink-950">
             {t.nav.search}
           </Link>
@@ -44,7 +45,7 @@ export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
           <Link href={`/${locale}/affiliate`} className="rounded-xl px-3.5 py-2 transition hover:bg-ink-50 hover:text-ink-950">
             Affiliate
           </Link>
-        </nav>
+        </nav>}
 
         <div className="flex items-center gap-1.5">
           <LocaleMenu locale={locale} label={t.common.language} />
@@ -83,6 +84,7 @@ export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
             authenticated={!!user}
             isAdmin={isAdmin}
             hasProvider={hasProvider}
+            marketplaceLive={marketplaceLive}
             labels={{
               search: t.nav.search,
               map: t.search.mapView,
