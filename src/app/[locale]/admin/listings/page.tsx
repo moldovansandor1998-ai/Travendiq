@@ -63,7 +63,16 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
         const tr = translations.find((x) => x.locale === "en") ?? translations[0];
         const media = [...((listing.media ?? []) as any[])].sort((a, b) => a.sort_order - b.sort_order);
         const provider = listing.provider as any;
-        return <article key={listing.id} className="overflow-hidden rounded-2xl border border-lagoon-100 bg-white shadow-sm">
+        const imageCount = media.filter((m) => m.kind === "image").length;
+        const checkCount = 1 + (imageCount < 3 ? 1 : 0) + (!tr?.description ? 1 : 0);
+        return <details key={listing.id} className="group overflow-hidden rounded-2xl border border-lagoon-100 bg-white shadow-sm">
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 hover:bg-lagoon-50 sm:px-5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-lg font-black text-amber-800">!</span>
+            <div className="min-w-0 flex-1"><h2 className="truncate font-bold text-lagoon-950">{tr?.title ?? listing.slug}</h2><p className="truncate text-xs text-lagoon-600">{provider?.display_name || provider?.legal_name || "Ismeretlen szolgáltató"} · {(listing.base_price_adult / 100).toFixed(2)} {listing.currency}</p></div>
+            <span className="badge shrink-0 bg-amber-100 text-amber-900">{checkCount} ellenőrzés</span>
+            <span className="text-xl text-lagoon-500 transition group-open:rotate-45">＋</span>
+          </summary>
+          <div className="border-t border-lagoon-100">
           <div className="grid md:grid-cols-[260px_1fr]">
             <div className="bg-sand-100">
               {media[0] ? (media[0].kind === "video" ? <video src={media[0].url} controls className="h-full min-h-56 w-full object-cover" /> :
@@ -117,7 +126,8 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
             <button name="action" value="reject" className="btn-secondary px-4 py-2 text-red-700">{t.admin.reject}</button>
             <button name="action" value="publish" className="btn-primary px-5 py-2">{t.admin.approve}</button>
           </form>
-        </article>;
+          </div>
+        </details>;
       })}
       {(pending ?? []).length === 0 && <div className="rounded-2xl border border-dashed border-lagoon-200 bg-white p-12 text-center">
         <p className="text-lg font-semibold text-lagoon-900">Nincs ellenőrzésre váró program</p><p className="mt-1 text-sm text-lagoon-500">A piszkozatok itt nem jelennek meg.</p>
@@ -137,7 +147,15 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
           const tr = translations.find((x) => x.locale === "hu") ?? translations.find((x) => x.locale === "en") ?? translations[0];
           const media = [...((listing.media ?? []) as any[])].sort((a, b) => a.sort_order - b.sort_order);
           const provider = listing.provider as any;
-          return <article key={listing.id} className="overflow-hidden rounded-2xl border border-lagoon-100 bg-white shadow-sm">
+          const needsAction = ["changes_requested", "rejected", "paused"].includes(listing.status);
+          return <details key={listing.id} className="group overflow-hidden rounded-2xl border border-lagoon-100 bg-white shadow-sm">
+            <summary className="flex cursor-pointer list-none items-center gap-3 p-4 hover:bg-lagoon-50 sm:px-5">
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-lg font-black ${needsAction ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>{needsAction ? "!" : "✓"}</span>
+              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="truncate font-bold text-lagoon-950">{tr?.title ?? listing.slug}</h3><StatusBadge status={listing.status} /></div><p className="truncate text-xs text-lagoon-600">{provider?.display_name || provider?.legal_name || "Ismeretlen szolgáltató"} · {(listing.base_price_adult / 100).toFixed(2)} {listing.currency}</p></div>
+              <span className={`badge shrink-0 ${needsAction ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>{needsAction ? "Teendő" : "Nincs teendő"}</span>
+              <span className="text-xl text-lagoon-500 transition group-open:rotate-45">＋</span>
+            </summary>
+            <div className="border-t border-lagoon-100">
             <div className="grid sm:grid-cols-[150px_1fr]">
               <div className="bg-sand-100">{media[0]?.kind === "image" ? <img src={media[0].url} alt="" className="h-full min-h-32 w-full object-cover" /> : <div className="grid h-32 place-items-center text-sm text-lagoon-500">Nincs kép</div>}</div>
               <div className="p-5"><div className="flex flex-wrap items-start justify-between gap-3">
@@ -155,7 +173,8 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
               <button name="action" value="changes" className="btn-secondary px-4 py-2">Módosítás kérése</button>
               {listing.status !== "archived" && <button name="action" value="archive" className="btn-secondary px-4 py-2 text-red-700">Törlés / archiválás</button>}
             </form>
-          </article>;
+            </div>
+          </details>;
         })}
       </div>
     </section>
