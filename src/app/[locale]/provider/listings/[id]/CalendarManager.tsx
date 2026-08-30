@@ -75,29 +75,6 @@ export async function CalendarManager({ listingId, locale, labels }: {
       // a meglévő (listing, date, time) alapturnusokat a rész-unique index miatt kihagyja
       await svc.from("availability").upsert(rows, { ignoreDuplicates: true });
     }
-    // Ez az utolsó kötelező lépés. Csak teljes program kerül automatikusan
-    // ellenőrzésre; a hiányos adatlap továbbra is piszkozat marad.
-    const [{ data: listing }, { data: translation }, { count: imageCount }, { count: slotCount }] = await Promise.all([
-      svc.from("listings").select("status, meeting_point, duration_minutes, base_price_adult").eq("id", listingId).single(),
-      svc.from("listing_translations").select("title, description, short_description, includes, excludes")
-        .eq("listing_id", listingId).eq("locale", "en").maybeSingle(),
-      svc.from("listing_media").select("id", { count: "exact", head: true }).eq("listing_id", listingId).eq("kind", "image"),
-      svc.from("availability").select("id", { count: "exact", head: true }).eq("listing_id", listingId)
-        .gte("date", fmtDate(new Date())).eq("is_blocked", false),
-    ]);
-    const complete = Boolean(
-      listing && ["draft", "changes_requested"].includes(listing.status) &&
-      listing.meeting_point && listing.duration_minutes && listing.base_price_adult > 0 &&
-      translation?.title?.trim().length >= 5 &&
-      translation?.description?.trim().length >= 80 &&
-      translation?.short_description?.trim().length >= 30 &&
-      translation?.includes?.trim() && translation?.excludes?.trim() &&
-      (imageCount ?? 0) >= 3 && (slotCount ?? 0) > 0
-    );
-    if (complete) {
-      await svc.from("listings").update({ status: "pending_review", updated_at: new Date().toISOString() })
-        .eq("id", listingId).in("status", ["draft", "changes_requested"]);
-    }
     revalidatePath(`/${locale}/provider/listings/${listingId}`);
   }
 
