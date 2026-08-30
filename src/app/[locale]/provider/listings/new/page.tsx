@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,6 +19,32 @@ export default async function NewListingPage({ params, searchParams }: { params:
   const { data: provider } = await sb.from("providers").select("id, status")
     .eq("owner_id", user.id).maybeSingle();
   if (!provider) redirect(`/${locale}/provider/register`);
+
+  if (provider.status !== "approved") {
+    const labels: Record<string, string> = locale === "hu" ? {
+      incomplete: "Hiányos jelentkezés", under_review: "Ellenőrzés alatt",
+      docs_required: "Dokumentumpótlás szükséges", rejected: "Elutasítva",
+      suspended: "Felfüggesztve",
+    } : {
+      incomplete: "Incomplete application", under_review: "Under review",
+      docs_required: "More documents required", rejected: "Rejected",
+      suspended: "Suspended",
+    };
+    return (
+      <div className="container-page max-w-2xl py-12">
+        <h1 className="text-2xl font-bold text-lagoon-950">{t.provider.newListing}</h1>
+        <div className="card mt-6 p-7">
+          <span className="badge bg-amber-100 text-amber-900">{labels[provider.status] ?? provider.status}</span>
+          <h2 className="mt-4 text-xl font-bold text-lagoon-950">{locale === "hu" ? "A cég jóváhagyása szükséges" : "Company approval required"}</h2>
+          <p className="mt-2 text-sm leading-6 text-lagoon-700">{locale === "hu" ? "Programot csak a cégadatok és a kötelező dokumentumok sikeres ellenőrzése után tölthetsz fel. A Dokumentumok oldalon látod minden irat állapotát, az elutasítás okát, és ott pótolhatod a hiányzó fájlokat." : "You can add activities after the company details and required documents have been verified. The Documents page shows each document status, rejection reasons and missing files."}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={`/${locale}/provider/documents`} className="btn-primary">{locale === "hu" ? "Dokumentumok és ellenőrzés" : "Documents and verification"}</Link>
+            <Link href={`/${locale}/provider/dashboard`} className="btn-secondary">{locale === "hu" ? "Vissza az áttekintéshez" : "Back to overview"}</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { data: categories } = await sb.from("categories").select("id, slug, translations:category_translations(locale,name)")
     .eq("is_active", true).order("sort_order");
@@ -62,11 +89,6 @@ export default async function NewListingPage({ params, searchParams }: { params:
   return (
     <div className="container-page max-w-2xl py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{t.provider.newListing}</h1>
-      {provider.status !== "approved" && (
-        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {t.provider.pendingReview}
-        </p>
-      )}
       <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-lagoon-600">
         <span className="rounded-lg bg-lagoon-700 px-2 py-3 text-white">1. {locale === "hu" ? "Alapadatok" : "Basics"}</span>
         <span className="rounded-lg bg-lagoon-50 px-2 py-3">2. {locale === "hu" ? "Képek és opciók" : "Media & options"}</span>

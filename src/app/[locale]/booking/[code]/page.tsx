@@ -38,11 +38,14 @@ export default async function BookingPage({
 
   const sb = createServiceClient();
   const { data: listing } = await sb.from("listings")
-    .select("translations:listing_translations(locale,title), meeting_point, free_cancellation, cancel_full_hours")
+    .select("translations:listing_translations(locale,title), meeting_point, free_cancellation, cancel_full_hours, provider:providers(display_name,contact_name,contact_phone,contact_email)")
     .eq("id", b.listing_id).single();
   const trs = (listing?.translations ?? []) as { locale: string; title: string }[];
   const title = (trs.find((x) => x.locale === locale) ?? trs.find((x) => x.locale === "en"))?.title ?? "";
   const statusLabel = (t.booking.status as Record<string, string>)[b.status] ?? b.status;
+  const provider = listing?.provider as unknown as { display_name: string; contact_name: string | null; contact_phone: string | null; contact_email: string | null } | null;
+  const contactAvailable = !["pending_payment", "expired", "cancelled", "refunded"].includes(b.status);
+  const whatsapp = provider?.contact_phone?.replace(/^00/, "+").replace(/[^0-9+]/g, "") ?? "";
 
   // A vendég token CSAK a vendéglinkben jelenhet meg: bejelentkezett
   // tulajdonosnál a session azonosít (a voucher API owner-sessiont is elfogad),
@@ -78,6 +81,19 @@ export default async function BookingPage({
           <div><dt className="text-lagoon-500">{t.booking.total}</dt>
             <dd className="font-semibold text-lagoon-900">{formatMoney(b.grand_total, b.currency, locale)}</dd></div>
         </dl>
+
+        {contactAvailable && provider && (
+          <section className="mt-6 rounded-xl border border-lagoon-200 bg-lagoon-50 p-5">
+            <h2 className="font-bold text-lagoon-950">{locale === "hu" ? "Kapcsolat a programszervezővel" : "Contact the activity provider"}</h2>
+            <p className="mt-1 text-sm text-lagoon-700">{provider.display_name}{provider.contact_name ? ` · ${provider.contact_name}` : ""}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {provider.contact_phone && <a className="btn-secondary" href={`tel:${provider.contact_phone}`}>{locale === "hu" ? "Telefonhívás" : "Call"}</a>}
+              {whatsapp.startsWith("+") && <a className="btn-primary" href={`https://wa.me/${whatsapp.slice(1)}`} target="_blank" rel="noopener">WhatsApp</a>}
+              {provider.contact_email && <a className="btn-secondary" href={`mailto:${provider.contact_email}`}>Email</a>}
+            </div>
+            <p className="mt-3 text-xs text-lagoon-600">{locale === "hu" ? "Ezt az elérhetőséget kizárólag a foglalásoddal kapcsolatos egyeztetésre használd." : "Use these details only to coordinate your booking."}</p>
+          </section>
+        )}
 
         {qr && (
           <div className="mt-6 border-t border-lagoon-100 pt-6 text-center">

@@ -2,8 +2,9 @@ export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin, audit } from "@/lib/admin";
 
-export default async function AdminProvidersPage({ params }: { params: { locale: Locale } }) {
+export default async function AdminProvidersPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
   const { locale } = params;
   const t = getDictionary(locale);
   const sb = createClient();
@@ -19,24 +20,27 @@ export default async function AdminProvidersPage({ params }: { params: { locale:
 
   async function review(formData: FormData) {
     "use server";
-    const sb = createClient();
-    const { data: { user: u } } = await sb.auth.getUser();
+    const { user: u, svc } = await requireAdmin(locale);
     const id = String(formData.get("id"));
     const action = String(formData.get("action"));
     const status = action === "approve" ? "approved" : action === "docs" ? "docs_required" : "rejected";
-    await sb.from("providers").update({
+    if (status === "approved") {
+      const required = new Set(["company_reg", "tax", "id_card", "bank_statement"]);
+      const { data: verified } = await svc.from("provider_documents").select("kind").eq("provider_id", id).eq("status", "verified");
+      for (const d of verified ?? []) required.delete(d.kind);
+      if (required.size > 0) redirect(`/${locale}/admin/providers?error=documents`);
+    }
+    await svc.from("providers").update({
       status, reviewed_by: u?.id, reviewed_at: new Date().toISOString(),
     }).eq("id", id);
-    await sb.from("audit_log").insert({
-      actor_id: u?.id, actor_role: "admin",
-      action: `provider.${status}`, entity: "providers", entity_id: id,
-    });
+    await audit(svc, { actorId: u.id, action: `provider.${status}`, entity: "providers", entityId: id });
     redirect(`/${locale}/admin/providers`);
   }
 
   return (
     <div className="container-page py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{t.admin.pendingProviders}</h1>
+      {searchParams.error === "documents" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A cég nem hagyható jóvá, amíg a cégkivonat, adóigazolás, képviselői személyazonosító és bankszámla-igazolás nincs ellenőrizve." : "The company cannot be approved until registration, tax, representative ID and bank documents are verified."}</p>}
       <div className="card mt-6 divide-y divide-lagoon-100">
         {(pending ?? []).map((p) => (
           <div key={p.id} className="flex flex-wrap items-center justify-between gap-4 p-4 text-sm">

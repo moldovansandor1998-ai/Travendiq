@@ -24,18 +24,23 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
     // létrehozása szerveroldali művelet, mert az RLS alól még nem olvasható a
     // felhasználóhoz tartozó szolgáltató a létrehozás pillanatában.
     const svc = createServiceClient();
+    const taxId = String(formData.get("tax_id") ?? "").trim();
+    const phone = String(formData.get("contact_phone") ?? "").trim();
+    if (!taxId || !/^\+[1-9][0-9]{7,14}$/.test(phone)) {
+      redirect(`/${locale}/provider/register?error=validation`);
+    }
     const payload = {
       owner_id: u.id,
       legal_name: String(formData.get("legal_name")),
       display_name: String(formData.get("display_name")),
-      is_company: formData.get("kind") === "company",
+      is_company: true,
       country_code: String(formData.get("country")),
       city: String(formData.get("city") ?? ""),
       address: String(formData.get("address") ?? ""),
-      tax_id: String(formData.get("tax_id") ?? ""),
+      tax_id: taxId,
       contact_name: String(formData.get("contact_name") ?? ""),
       contact_email: String(formData.get("contact_email") ?? ""),
-      contact_phone: String(formData.get("contact_phone") ?? ""),
+      contact_phone: phone,
       status: "under_review",
     } as const;
     const { data: existing } = await svc.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
@@ -70,16 +75,9 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
   return (
     <div className="container-page max-w-2xl py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{t.provider.register}</h1>
-      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">A szolgáltatói adatok mentése nem sikerült. Ellenőrizd a mezőket, majd próbáld újra.</p>}
+      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{searchParams.error === "validation" ? "Az adószám kötelező, a telefonszámot pedig nemzetközi formátumban add meg (például +36301234567)." : "A szolgáltatói adatok mentése nem sikerült. Ellenőrizd a mezőket, majd próbáld újra."}</p>}
       <form action={register} className="card mt-6 space-y-4 p-6">
-        <div className="flex gap-4 text-sm">
-          <label className="flex items-center gap-2 font-medium text-lagoon-700">
-            <input type="radio" name="kind" value="company" defaultChecked /> {t.provider.company}
-          </label>
-          <label className="flex items-center gap-2 font-medium text-lagoon-700">
-            <input type="radio" name="kind" value="individual" /> {t.provider.individual}
-          </label>
-        </div>
+        <p className="rounded-xl bg-lagoon-50 p-3 text-sm font-medium text-lagoon-800">{locale === "hu" ? "A Travendiq szolgáltatói felületére kizárólag bejegyzett vállalkozások jelentkezhetnek." : "Only registered businesses can apply as Travendiq providers."}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t.provider.legalName} name="legal_name" required />
           <Field label={t.provider.displayName} name="display_name" required />
@@ -96,10 +94,10 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
           </div>
           <Field label={t.provider.city} name="city" />
           <Field label={t.provider.address} name="address" />
-          <Field label={t.provider.taxId} name="tax_id" />
+          <Field label={`${t.provider.taxId} *`} name="tax_id" required />
           <Field label={t.provider.contactName} name="contact_name" required />
           <Field label={t.provider.contactEmail} name="contact_email" type="email" required />
-          <Field label={t.provider.contactPhone} name="contact_phone" type="tel" />
+          <Field label={locale === "hu" ? "Telefon / WhatsApp *" : "Phone / WhatsApp *"} name="contact_phone" type="tel" required placeholder="+36301234567" />
         </div>
         <p className="text-xs leading-relaxed text-lagoon-500">
           A regisztráció után KYC-dokumentumok (személyi/cégirat, engedélyek, biztosítás)
@@ -111,13 +109,13 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
   );
 }
 
-function Field({ label, name, type = "text", required = false }: {
-  label: string; name: string; type?: string; required?: boolean;
+function Field({ label, name, type = "text", required = false, placeholder }: {
+  label: string; name: string; type?: string; required?: boolean; placeholder?: string;
 }) {
   return (
     <div>
       <label className="mb-1 block text-sm font-medium text-lagoon-700" htmlFor={name}>{label}</label>
-      <input id={name} name={name} type={type} required={required} className="input" />
+      <input id={name} name={name} type={type} required={required} placeholder={placeholder} className="input" />
     </div>
   );
 }
