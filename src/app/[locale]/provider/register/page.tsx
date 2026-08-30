@@ -66,8 +66,9 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
   if (!user) {
     return (
       <div className="container-page max-w-md py-16 text-center">
-        <p className="text-lagoon-700">{t.provider.register}</p>
-        <a href={`/${locale}/auth/login`} className="btn-primary mt-4 inline-flex">{t.nav.signIn}</a>
+        <h1 className="text-3xl font-bold text-lagoon-950">{locale === "hu" ? "Szolgáltatói regisztráció" : "Provider registration"}</h1>
+        <p className="mt-3 text-lagoon-700">{locale === "hu" ? "Új partnerként először hozz létre egy céges partnerfiókot. Ha már regisztráltál, jelentkezz be." : "New partners should create a company partner account first. If you already registered, sign in."}</p>
+        <div className="mt-6 grid gap-3"><a href={`/${locale}/auth/register`} className="btn-primary">{locale === "hu" ? "Új partnerfiók regisztrációja" : "Register a new partner account"}</a><a href={`/${locale}/auth/login`} className="btn-secondary">{locale === "hu" ? "Már van fiókom – bejelentkezés" : "I already have an account – sign in"}</a></div>
       </div>
     );
   }
