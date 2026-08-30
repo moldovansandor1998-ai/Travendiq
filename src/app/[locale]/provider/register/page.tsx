@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export default async function ProviderRegisterPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
   const { locale } = params;
@@ -20,7 +20,11 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
     const { data: { user: u } } = await sb.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
 
-    const { data: provider, error } = await sb.from("providers").upsert({
+    // A session kliens csak a személyazonosság ellenőrzésére szolgál. A profil
+    // létrehozása szerveroldali művelet, mert az RLS alól még nem olvasható a
+    // felhasználóhoz tartozó szolgáltató a létrehozás pillanatában.
+    const svc = createServiceClient();
+    const payload = {
       owner_id: u.id,
       legal_name: String(formData.get("legal_name")),
       display_name: String(formData.get("display_name")),
@@ -33,15 +37,21 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
       contact_email: String(formData.get("contact_email") ?? ""),
       contact_phone: String(formData.get("contact_phone") ?? ""),
       status: "under_review",
-    }, { onConflict: "owner_id" }).select("id").single();
+    } as const;
+    const { data: existing } = await svc.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
+    const result = existing
+      ? await svc.from("providers").update(payload).eq("id", existing.id).eq("owner_id", u.id).select("id").single()
+      : await svc.from("providers").insert(payload).select("id").single();
+    const { data: provider, error } = result;
 
     if (error || !provider) {
       console.error("[provider/register] save failed:", error?.message ?? "missing provider");
       redirect(`/${locale}/provider/register?error=save`);
     }
 
-    await sb.from("user_roles").upsert({ user_id: u.id, role: "provider" });
-    await sb.from("audit_log").insert({
+    const { error: roleError } = await svc.from("user_roles").upsert({ user_id: u.id, role: "provider" });
+    if (roleError) console.error("[provider/register] role failed:", roleError.message);
+    await svc.from("audit_log").insert({
       actor_id: u.id, actor_role: "provider",
       action: "provider.registered", entity: "providers", entity_id: provider.id,
     });
