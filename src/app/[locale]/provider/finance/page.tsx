@@ -34,7 +34,7 @@ export default async function ProviderFinance({ params }: { params: { locale: Lo
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <Stat label={pf.expectedPayout} value={formatMoney(sum(["held", "pending", "scheduled"]), "EUR", locale)} />
         <Stat label={pf.paidOut} value={formatMoney(sum(["paid"]), "EUR", locale)} />
-        <Stat label="Stripe Connect"
+        <Stat label={locale === "hu" ? "Kifizetési fiók" : "Payout account"}
           value={provider.stripe_onboarding_complete ? pf.connected : pf.notSetUp} />
       </div>
 

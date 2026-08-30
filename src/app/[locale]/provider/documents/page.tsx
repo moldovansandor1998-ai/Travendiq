@@ -64,7 +64,12 @@ export default async function ProviderDocuments({ params }: { params: { locale: 
             </div>
           );
         })}
-        {(docs ?? []).length === 0 && <p className="p-4 text-sm text-lagoon-500">–</p>}
+        {(docs ?? []).length === 0 && (
+          <div className="p-5 text-sm text-lagoon-700">
+            <p className="font-semibold text-lagoon-900">{locale === "hu" ? "Még nincs feltöltött dokumentum." : "No documents uploaded yet."}</p>
+            <p className="mt-1">{locale === "hu" ? "A fenti űrlapon válaszd ki a dokumentum típusát, majd töltsd fel ellenőrzésre." : "Choose a document type above, then upload the file for review."}</p>
+          </div>
+        )}
       </div>
     </div>
   );

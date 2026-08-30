@@ -81,11 +81,14 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
 }
 
 /** Mobil fiókmenü – hamburger + lecsúszó panel. */
-export function MobileMenu({ locale, labels }: {
+export function MobileMenu({ locale, labels, authenticated, isAdmin, hasProvider }: {
   locale: Locale;
+  authenticated: boolean;
+  isAdmin: boolean;
+  hasProvider: boolean;
   labels: {
     search: string; map: string; provider: string; signIn: string; signUp: string;
-    affiliate: string; favorites: string; account: string; menu: string;
+    affiliate: string; favorites: string; account: string; menu: string; signOut: string;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -100,10 +103,11 @@ export function MobileMenu({ locale, labels }: {
   const items = [
     { href: `/${locale}/search`, label: labels.search, icon: "search" },
     { href: `/${locale}/search?view=map`, label: labels.map, icon: "map-pin" },
-    { href: `/${locale}/account/favorites`, label: labels.favorites, icon: "heart" },
-    { href: `/${locale}/account`, label: labels.account, icon: "ticket" },
+    ...(authenticated ? [{ href: `/${locale}/account/favorites`, label: labels.favorites, icon: "heart" }] : []),
+    ...(authenticated ? [{ href: `/${locale}/account`, label: labels.account, icon: "ticket" }] : []),
     { href: `/${locale}/affiliate`, label: labels.affiliate, icon: "zap" },
-    { href: `/${locale}/provider/register`, label: labels.provider, icon: "briefcase" },
+    { href: hasProvider ? `/${locale}/provider/dashboard` : `/${locale}/provider/register`, label: hasProvider ? "Provider dashboard" : labels.provider, icon: "briefcase" },
+    ...(isAdmin ? [{ href: `/${locale}/admin`, label: "Admin", icon: "shield" }] : []),
   ];
 
   return (
@@ -135,12 +139,16 @@ export function MobileMenu({ locale, labels }: {
                 </Link>
               ))}
             </nav>
-            <Link href={`/${locale}/auth/register`} className="btn-secondary mt-4 w-full">
-              {labels.signUp}
-            </Link>
-            <Link href={`/${locale}/auth/login`} className="btn-primary mt-2 w-full">
-              {labels.signIn}
-            </Link>
+            {authenticated ? (
+              <form action="/api/auth/logout" method="post" className="mt-4">
+                <button type="submit" className="btn-primary w-full">{labels.signOut}</button>
+              </form>
+            ) : (
+              <>
+                <Link href={`/${locale}/auth/register`} className="btn-secondary mt-4 w-full">{labels.signUp}</Link>
+                <Link href={`/${locale}/auth/login`} className="btn-primary mt-2 w-full">{labels.signIn}</Link>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -88,7 +88,12 @@ export default async function ProviderSettings({ params, searchParams }: {
       </form>
 
       <div className="card mt-6 p-5">
-        <h2 className="font-semibold text-lagoon-900">Stripe Connect</h2>
+        <h2 className="font-semibold text-lagoon-900">{locale === "hu" ? "Kifizetési fiók" : "Payout account"}</h2>
+        <p className="mt-1 text-sm text-lagoon-600">
+          {locale === "hu"
+            ? "Itt állíthatod be azt a bankszámlát, ahová a programjaid után járó összegeket utaljuk. A biztonságos azonosítást és a kifizetést a Stripe kezeli."
+            : "Set up the bank account where earnings from your activities will be paid. Stripe securely handles identity verification and payouts."}
+        </p>
         <p className="mt-1 text-sm text-lagoon-600">
           {provider.stripe_onboarding_complete ? ps.stripeActive : ps.stripeSetup}
         </p>

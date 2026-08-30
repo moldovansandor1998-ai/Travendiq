@@ -3,11 +3,16 @@ import { redirect } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ProviderRegisterPage({ params }: { params: { locale: Locale } }) {
+export default async function ProviderRegisterPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
   const { locale } = params;
   const t = getDictionary(locale);
   const sb = createClient();
   const { data: { user } } = await sb.auth.getUser();
+
+  if (user) {
+    const { data: existing } = await sb.from("providers").select("id").eq("owner_id", user.id).limit(1).maybeSingle();
+    if (existing) redirect(`/${locale}/provider/dashboard`);
+  }
 
   async function register(formData: FormData) {
     "use server";
@@ -15,7 +20,7 @@ export default async function ProviderRegisterPage({ params }: { params: { local
     const { data: { user: u } } = await sb.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
 
-    const { data: provider, error } = await sb.from("providers").insert({
+    const { data: provider, error } = await sb.from("providers").upsert({
       owner_id: u.id,
       legal_name: String(formData.get("legal_name")),
       display_name: String(formData.get("display_name")),
@@ -28,15 +33,18 @@ export default async function ProviderRegisterPage({ params }: { params: { local
       contact_email: String(formData.get("contact_email") ?? ""),
       contact_phone: String(formData.get("contact_phone") ?? ""),
       status: "under_review",
-    }).select("id").single();
+    }, { onConflict: "owner_id" }).select("id").single();
 
-    if (!error && provider) {
-      await sb.from("user_roles").upsert({ user_id: u.id, role: "provider" });
-      await sb.from("audit_log").insert({
-        actor_id: u.id, actor_role: "provider",
-        action: "provider.registered", entity: "providers", entity_id: provider.id,
-      });
+    if (error || !provider) {
+      console.error("[provider/register] save failed:", error?.message ?? "missing provider");
+      redirect(`/${locale}/provider/register?error=save`);
     }
+
+    await sb.from("user_roles").upsert({ user_id: u.id, role: "provider" });
+    await sb.from("audit_log").insert({
+      actor_id: u.id, actor_role: "provider",
+      action: "provider.registered", entity: "providers", entity_id: provider.id,
+    });
     redirect(`/${locale}/provider/dashboard`);
   }
 
@@ -52,6 +60,7 @@ export default async function ProviderRegisterPage({ params }: { params: { local
   return (
     <div className="container-page max-w-2xl py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{t.provider.register}</h1>
+      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">A szolgáltatói adatok mentése nem sikerült. Ellenőrizd a mezőket, majd próbáld újra.</p>}
       <form action={register} className="card mt-6 space-y-4 p-6">
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2 font-medium text-lagoon-700">

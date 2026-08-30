@@ -46,23 +46,6 @@ export default async function ProviderDashboard({ params }: { params: { locale: 
         <Link href={`/${locale}/provider/listings/new`} className="btn-primary">{t.provider.newListing}</Link>
       </div>
 
-      <nav className="mt-6 flex flex-wrap gap-2 text-sm">
-        {[
-          [`/${locale}/provider/bookings`, pd.navBookings],
-          [`/${locale}/provider/coupons`, pd.navCoupons],
-          [`/${locale}/provider/finance`, pd.navFinance],
-          [`/${locale}/provider/team`, pd.navTeam],
-          [`/${locale}/provider/documents`, pd.navDocuments],
-          [`/${locale}/provider/settings`, pd.navSettings],
-          [`/${locale}/checkin`, pd.navCheckin],
-        ].map(([href, label]) => (
-          <Link key={href} href={href}
-            className="rounded-lg border border-lagoon-200 bg-white px-3 py-1.5 font-medium text-lagoon-800 hover:border-lagoon-400">
-            {label}
-          </Link>
-        ))}
-      </nav>
-
       {provider.status !== "approved" && (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           {t.provider.pendingReview}

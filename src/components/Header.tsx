@@ -3,8 +3,30 @@ import { Logo } from "./Logo";
 import { Icon } from "./Icon";
 import { LocaleMenu, MobileMenu } from "./HeaderClient";
 import type { Dictionary, Locale } from "@/lib/i18n";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
+export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
+  const sb = createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  let isAdmin = false;
+  let hasProvider = false;
+  if (user) {
+    const [{ data: admin }, { data: provider }] = await Promise.all([
+      sb.rpc("is_admin"),
+      sb.from("providers").select("id").eq("owner_id", user.id).limit(1).maybeSingle(),
+    ]);
+    isAdmin = admin === true;
+    hasProvider = !!provider;
+  }
+
+  async function signOut() {
+    "use server";
+    const auth = createClient();
+    await auth.auth.signOut();
+    redirect(`/${locale}`);
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-ink-100/80 bg-white/85 backdrop-blur-md">
       <div className="container-page flex h-16 items-center justify-between gap-3">
@@ -27,25 +49,40 @@ export function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
         <div className="flex items-center gap-1.5">
           <LocaleMenu locale={locale} label={t.common.language} />
           <Link
-            href={`/${locale}/provider/register`}
+            href={hasProvider ? `/${locale}/provider/dashboard` : `/${locale}/provider/register`}
             className="btn-secondary btn-sm hidden md:inline-flex"
           >
-            {t.nav.becomeProvider}
+            {hasProvider ? (locale === "hu" ? "Szolgáltatói felület" : "Provider dashboard") : t.nav.becomeProvider}
           </Link>
-          <Link
-            href={`/${locale}/auth/register`}
-            className="btn-secondary btn-sm hidden sm:inline-flex"
-          >
-            {t.auth.signUp}
-          </Link>
-          <Link
-            href={`/${locale}/auth/login`}
-            className="btn-primary btn-sm hidden sm:inline-flex"
-          >
-            {t.nav.signIn}
-          </Link>
+          {isAdmin && (
+            <Link href={`/${locale}/admin`} className="btn-secondary btn-sm hidden sm:inline-flex">
+              Admin
+            </Link>
+          )}
+          {user ? (
+            <>
+              <Link href={`/${locale}/account`} className="btn-secondary btn-sm hidden sm:inline-flex">
+                {locale === "hu" ? "Fiókom" : "My account"}
+              </Link>
+              <form action={signOut} className="hidden sm:block">
+                <button type="submit" className="btn-primary btn-sm">{t.nav.signOut}</button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link href={`/${locale}/auth/register`} className="btn-secondary btn-sm hidden sm:inline-flex">
+                {t.auth.signUp}
+              </Link>
+              <Link href={`/${locale}/auth/login`} className="btn-primary btn-sm hidden sm:inline-flex">
+                {t.nav.signIn}
+              </Link>
+            </>
+          )}
           <MobileMenu
             locale={locale}
+            authenticated={!!user}
+            isAdmin={isAdmin}
+            hasProvider={hasProvider}
             labels={{
               search: t.nav.search,
               map: t.search.mapView,
@@ -56,6 +93,7 @@ export function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
               favorites: t.nav.favorites,
               account: t.nav.bookings,
               menu: "Menu",
+              signOut: t.nav.signOut,
             }}
           />
         </div>
