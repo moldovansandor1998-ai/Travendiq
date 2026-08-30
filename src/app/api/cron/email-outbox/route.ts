@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         vars: row.vars as EmailVars,
       });
       if (!sendResult.ok) {
-        throw new Error(sendResult.error ?? "email_send_failed");
+        throw new Error("email_send_failed");
       }
       // KRITIKUS: a küldés MÁR megtörtént – a 'sent' státuszmentés hibája NEM
       // jelentheti azt, hogy az email "nem ment ki" (az újra-claim duplikálna).
