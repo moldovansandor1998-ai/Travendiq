@@ -90,13 +90,15 @@ export default async function ListingPage({ params }: { params: { locale: Locale
       description: tr?.short_description, offers: { "@type": "Offer", price: (l.base_price_adult / 100).toFixed(2), priceCurrency: l.currency } }) }} />
 
     <section className="container-page pt-4 sm:pt-7">
-      <div className="relative grid max-h-[650px] min-h-[360px] grid-cols-1 gap-2 overflow-hidden rounded-[28px] bg-lagoon-100 md:grid-cols-[1.7fr_1fr] md:grid-rows-2">
-        {(media.length ? media.slice(0, 3) : [{ url: null, alt: null }]).map((m: { url: string | null; alt: string | null }, i: number) =>
-          <SafeImage key={i} src={m.url} alt={m.alt ?? String(tr?.title ?? "")} eager={i === 0}
-            className={`${i === 0 ? "h-[62vh] min-h-[420px] md:row-span-2 md:h-[650px]" : "hidden h-full md:block"} w-full object-cover`} />)}
+      <div className="relative overflow-hidden rounded-[28px] bg-lagoon-100">
+        <SafeImage src={media[0]?.url} alt={media[0]?.alt ?? String(tr?.title ?? "")} eager
+          className="h-[58vh] min-h-[380px] max-h-[650px] w-full object-cover" />
         <div className="absolute right-4 top-4"><ListingActions listingId={l.id} favoriteLabel={c.favorite} shareLabel={c.share} /></div>
         {media.length > 1 && <div className="absolute bottom-4 right-4 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-lagoon-950 shadow-lg">▧ {media.length}</div>}
       </div>
+      {media.length > 1 && <div className="mt-3 flex snap-x gap-3 overflow-x-auto pb-2">
+        {media.slice(1).map((m: { url: string | null; alt: string | null }, i: number) => <a key={i} href={m.url ?? "#"} target="_blank" rel="noreferrer" className="w-32 shrink-0 snap-start overflow-hidden rounded-2xl border border-lagoon-100 sm:w-44"><SafeImage src={m.url} alt={m.alt ?? `${tr?.title} ${i + 2}`} className="aspect-[4/3] w-full object-cover" /></a>)}
+      </div>}
     </section>
 
     <div className="container-page mt-7 grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px]">
