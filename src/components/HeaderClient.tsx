@@ -81,11 +81,12 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
 }
 
 /** Mobil fiókmenü – hamburger + lecsúszó panel. */
-export function MobileMenu({ locale, labels, authenticated, isAdmin, hasProvider }: {
+export function MobileMenu({ locale, labels, authenticated, isAdmin, hasProvider, marketplaceLive }: {
   locale: Locale;
   authenticated: boolean;
   isAdmin: boolean;
   hasProvider: boolean;
+  marketplaceLive: boolean;
   labels: {
     search: string; map: string; provider: string; signIn: string; signUp: string;
     affiliate: string; favorites: string; account: string; menu: string; signOut: string;
@@ -101,11 +102,11 @@ export function MobileMenu({ locale, labels, authenticated, isAdmin, hasProvider
   }, [open]);
 
   const items = [
-    { href: `/${locale}/search`, label: labels.search, icon: "search" },
-    { href: `/${locale}/search?view=map`, label: labels.map, icon: "map-pin" },
+    ...(marketplaceLive ? [{ href: `/${locale}/search`, label: labels.search, icon: "search" },
+      { href: `/${locale}/search?view=map`, label: labels.map, icon: "map-pin" }] : []),
     ...(authenticated ? [{ href: `/${locale}/account/favorites`, label: labels.favorites, icon: "heart" }] : []),
     ...(authenticated ? [{ href: `/${locale}/account`, label: labels.account, icon: "ticket" }] : []),
-    { href: `/${locale}/affiliate`, label: labels.affiliate, icon: "zap" },
+    ...(marketplaceLive ? [{ href: `/${locale}/affiliate`, label: labels.affiliate, icon: "zap" }] : []),
     { href: hasProvider ? `/${locale}/provider/dashboard` : `/${locale}/provider/register`, label: hasProvider ? "Provider dashboard" : labels.provider, icon: "briefcase" },
     ...(isAdmin ? [{ href: `/${locale}/admin`, label: "Admin", icon: "shield" }] : []),
   ];
