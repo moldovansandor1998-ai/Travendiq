@@ -179,6 +179,8 @@ export default async function ListingEditorPage({
     const sb2 = createClient();
     await sb2.from("listing_transfer_zones").insert({
       listing_id: id, zone_name: String(formData.get("zone_name") ?? ""),
+      pickup_from: String(formData.get("pickup_from") ?? ""),
+      pickup_to: String(formData.get("pickup_to") ?? ""),
       pickup_fee: Math.round(Number(formData.get("fee") ?? 0) * 100),
       note: String(formData.get("note") ?? ""),
     });
@@ -249,11 +251,19 @@ export default async function ListingEditorPage({
         </section>
       )}
 
-      <nav className="mt-6 flex gap-2 overflow-x-auto border-b border-lagoon-100 pb-3 text-sm">
+      <div className="mt-6 rounded-2xl bg-gradient-to-r from-lagoon-950 via-lagoon-800 to-lagoon-700 p-5 text-white shadow-lg">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-lagoon-100">Program létrehozása</p>
+        <div className="mt-2 flex items-end justify-between gap-4"><div><h2 className="text-xl font-bold">{tabs.find(([key]) => key === tab)?.[1]}</h2>
+          <p className="mt-1 text-sm text-lagoon-100">Tölts ki minden szükséges információt, hogy a vendég pontosan tudja, mit foglal.</p></div>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">{tabs.findIndex(([key]) => key === tab) + 1}/5</span>
+        </div>
+      </div>
+      <nav className="mt-4 grid gap-2 border-b border-lagoon-100 pb-4 text-sm sm:grid-cols-5">
         {tabs.map(([k, label], index) => (
           <a key={k} href={`/${locale}/provider/listings/${id}?tab=${k}`}
-            className={`whitespace-nowrap rounded-lg px-3 py-2 font-medium ${tab === k ? "bg-lagoon-700 text-white" : "border border-lagoon-100 bg-white text-lagoon-700 hover:bg-lagoon-50"}`}>
-            {index + 1}. {label}
+            className={`flex min-h-14 items-center gap-2 rounded-xl px-3 py-2 font-medium transition ${tab === k ? "bg-lagoon-700 text-white shadow-md" : "border border-lagoon-100 bg-white text-lagoon-700 hover:border-lagoon-300 hover:bg-lagoon-50"}`}>
+            <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${tab === k ? "bg-white text-lagoon-800" : "bg-lagoon-100"}`}>{index + 1}</span>
+            <span className="leading-tight">{label}</span>
           </a>
         ))}
       </nav>
@@ -361,15 +371,18 @@ export default async function ListingEditorPage({
           </Section>
 
           <Section title={t.providerArea.transferZones}>
-            <RowList rows={((l.zones ?? []) as { id: string; zone_name: string; pickup_fee: number }[])
+            <p className="mb-4 text-sm text-lagoon-600">Add meg pontosan, melyik területről melyik területig érvényes a felvétel és mennyi a felár.</p>
+            <RowList rows={((l.zones ?? []) as { id: string; zone_name: string; pickup_from: string | null; pickup_to: string | null; pickup_fee: number }[])
               .map((z) => ({ id: z.id, kind: "zone",
-                text: `${z.zone_name} (+${(z.pickup_fee / 100).toFixed(2)} ${l.currency})` }))}
+                text: `${z.zone_name}: ${z.pickup_from || "—"} → ${z.pickup_to || "—"} (+${(z.pickup_fee / 100).toFixed(2)} ${l.currency})` }))}
               deleteAction={deleteRow} />
-            <form action={addZone} className="mt-3 grid gap-2 sm:grid-cols-4">
-              <input name="zone_name" placeholder="Zone name" required className="input py-2" />
-              <input name="fee" type="number" step="0.01" placeholder={`Fee ${l.currency}`} className="input py-2" />
-              <input name="note" placeholder="Note" className="input py-2" />
-              <button className="btn-secondary py-2" type="submit">+</button>
+            <form action={addZone} className="mt-4 grid gap-3 rounded-xl bg-lagoon-50 p-4 sm:grid-cols-2">
+              <F label="Zóna neve" name="zone_name" required />
+              <F label="Felár" name="fee" type="number" step="0.01" />
+              <F label="Felvétel innen (pl. Hurghada központ)" name="pickup_from" required />
+              <F label="Zóna határa / eddig (pl. Makadi Bay)" name="pickup_to" required />
+              <div className="sm:col-span-2"><F label="Megjegyzés a vendégnek" name="note" /></div>
+              <button className="btn-secondary py-3 sm:col-span-2" type="submit">＋ Transzferzóna hozzáadása</button>
             </form>
           </Section>
           <div className="flex justify-end"><a className="btn-primary" href={`/${locale}/provider/listings/${id}?tab=media`}>
