@@ -27,6 +27,7 @@ export default async function CheckinPage({ params }: { params: { locale: Locale
       <h1 className="text-2xl font-bold text-lagoon-950">
         {t.checkin.title}
       </h1>
+      <p className="mt-2 text-sm text-lagoon-600">{locale === "hu" ? "A vendég voucherén lévő QR-kódot itt olvashatod be érkezéskor. A rendszer ellenőrzi a foglalást, majd rögzíti a ténylegesen beléptetett résztvevők számát. Ez nem munkatársi bejelentkezés." : "Scan the QR code on the guest's voucher on arrival. The system verifies the booking and records admitted participants. This is not staff sign-in."}</p>
       <Scanner
         locale={locale}
         labels={{

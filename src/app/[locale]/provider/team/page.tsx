@@ -3,22 +3,28 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getDictionary, type Locale } from "@/lib/i18n";
+import { createHash, randomBytes } from "node:crypto";
 
 const ALL_PERMISSIONS = ["bookings.read", "bookings.write", "listings.write", "checkin", "finance.read"] as const;
 
-export default async function ProviderTeam({ params }: { params: { locale: Locale } }) {
+export default async function ProviderTeam({ params, searchParams }: { params: { locale: Locale }; searchParams: { invited?: string; added?: string; error?: string } }) {
   const { locale } = params;
   const t = getDictionary(locale);
   const pt = t.providerTeam as Record<string, string>;
   const sb = createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
-  const { data: provider } = await sb.from("providers").select("id").eq("owner_id", user.id).maybeSingle();
+  const { data: provider } = await sb.from("providers").select("id, display_name").eq("owner_id", user.id).maybeSingle();
   if (!provider) redirect(`/${locale}/provider/register`);
+  const providerName = provider.display_name;
 
   const { data: members } = await sb.from("provider_members")
     .select("user_id, permissions, created_at, profile:profiles(full_name, email)")
     .eq("provider_id", provider.id);
+  const svcRead = createServiceClient();
+  const { data: invitations } = await svcRead.from("provider_team_invitations")
+    .select("id, email, permissions, expires_at, created_at").eq("provider_id", provider.id)
+    .is("accepted_at", null).gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false });
 
   async function addMember(formData: FormData) {
     "use server";
@@ -32,7 +38,28 @@ export default async function ProviderTeam({ params }: { params: { locale: Local
     if (!email || perms.length === 0) throw new Error("invalid input");
     const svc = createServiceClient();
     const { data: profile } = await svc.from("profiles").select("id").eq("email", email).maybeSingle();
-    if (!profile) throw new Error("no registered user with this email");
+    if (!profile) {
+      const token = randomBytes(32).toString("base64url");
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+      await svc.from("provider_team_invitations").delete().eq("provider_id", prov.id).eq("email", email).is("accepted_at", null);
+      const { error: inviteErr } = await svc.from("provider_team_invitations").insert({
+        provider_id: prov.id, email, permissions: perms, token_hash: tokenHash,
+        invited_by: u.id, expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+      });
+      if (inviteErr) {
+        console.error("[provider/team] invitation failed:", inviteErr.message);
+        redirect(`/${locale}/provider/team?error=invite`);
+      }
+      const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.travendiq.com";
+      const link = `${base}/${locale}/provider/team/accept?token=${encodeURIComponent(token)}`;
+      const { error: emailErr } = await svc.rpc("enqueue_email", {
+        p_dedupe_key: `provider_team_invite:${prov.id}:${email}`,
+        p_to: email, p_template: "provider_team_invitation", p_locale: locale,
+        p_vars: { name: providerName, link },
+      });
+      if (emailErr) console.error("[provider/team] invitation email failed:", emailErr.message);
+      redirect(`/${locale}/provider/team?invited=1`);
+    }
     // DB-hiba nem csendes: hamis "tag hozzáadva" állapot tiltva
     const { error: upErr } = await svc.from("provider_members").upsert({
       provider_id: prov.id, user_id: profile.id, permissions: perms, invited_by: u.id,
@@ -51,6 +78,7 @@ export default async function ProviderTeam({ params }: { params: { locale: Local
       entity_id: String(profile.id), diff: { permissions: perms },
     });
     revalidatePath(`/${locale}/provider/team`);
+    redirect(`/${locale}/provider/team?added=1`);
   }
 
   async function removeMember(formData: FormData) {
@@ -82,6 +110,9 @@ export default async function ProviderTeam({ params }: { params: { locale: Local
   return (
     <div className="container-page py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{pt.title}</h1>
+      {searchParams.invited === "1" && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{locale === "hu" ? "A munkatársi meghívót elküldtük emailben. A meghívott a link elfogadása után jelenik meg a csapatban." : "Invitation sent by email. The member will appear after accepting it."}</p>}
+      {searchParams.added === "1" && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{locale === "hu" ? "A regisztrált munkatársat hozzáadtuk." : "The registered team member was added."}</p>}
+      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A meghívás nem sikerült. Próbáld újra." : "Invitation failed. Please try again."}</p>}
 
       <form action={addMember} className="card mt-6 p-5">
         <h2 className="font-semibold text-lagoon-900">{pt.addTitle}</h2>
@@ -104,6 +135,8 @@ export default async function ProviderTeam({ params }: { params: { locale: Local
         </div>
         <button className="btn-primary mt-4" type="submit">{pt.add}</button>
       </form>
+
+      {(invitations ?? []).length > 0 && <div className="card mt-6 divide-y divide-lagoon-100"><h2 className="p-4 font-semibold text-lagoon-900">{locale === "hu" ? "Függőben lévő meghívások" : "Pending invitations"}</h2>{(invitations ?? []).map((i) => <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm"><span>{i.email}</span><span className="badge bg-amber-100 text-amber-800">{locale === "hu" ? `Lejár: ${new Date(i.expires_at).toLocaleDateString("hu-HU")}` : `Expires: ${new Date(i.expires_at).toLocaleDateString("en-GB")}`}</span></div>)}</div>}
 
       <div className="card mt-6 divide-y divide-lagoon-100">
         {(members ?? []).map((m) => {

@@ -26,7 +26,7 @@ export default async function ProviderLayout({ children, params }: {
     [`/${locale}/provider/team`, pd.navTeam],
     [`/${locale}/provider/documents`, pd.navDocuments],
     [`/${locale}/provider/settings`, pd.navSettings],
-    [`/${locale}/checkin`, pd.navCheckin],
+    [`/${locale}/checkin`, locale === "hu" ? "Jegyellenőrzés (QR)" : "Ticket check-in (QR)"],
   ];
 
   return (

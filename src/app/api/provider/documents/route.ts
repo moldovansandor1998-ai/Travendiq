@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
-const KINDS = new Set(["id_card", "company_reg", "license", "insurance", "tax", "bank_statement"]);
+const KINDS = new Set(["id_card", "company_reg", "license", "insurance", "bank_statement"]);
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 const MAX_BYTES = 15 * 1024 * 1024;
 

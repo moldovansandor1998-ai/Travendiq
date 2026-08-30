@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 
 interface Props {
   locale: string;
+  next?: string;
   labels: {
     title: string; email: string; password: string; submit: string;
     rateLimited: string; invalidCredentials: string;
   };
 }
 
-export function LoginForm({ locale, labels }: Props) {
+export function LoginForm({ locale, next, labels }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +26,7 @@ export function LoginForm({ locale, labels }: Props) {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, locale, next: `/${locale}/account` }),
+      body: JSON.stringify({ email, password, locale, next: next ?? `/${locale}/account` }),
     });
     setBusy(false);
     if (res.ok) {

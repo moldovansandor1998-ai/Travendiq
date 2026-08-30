@@ -25,10 +25,14 @@ export default async function AdminProvidersPage({ params, searchParams }: { par
     const action = String(formData.get("action"));
     const status = action === "approve" ? "approved" : action === "docs" ? "docs_required" : "rejected";
     if (status === "approved") {
-      const required = new Set(["company_reg", "tax", "id_card", "bank_statement"]);
-      const { data: verified } = await svc.from("provider_documents").select("kind").eq("provider_id", id).eq("status", "verified");
+      const required = new Set(["company_reg", "id_card", "bank_statement"]);
+      const [{ data: verified }, { data: payout }, { data: agreement }] = await Promise.all([
+        svc.from("provider_documents").select("kind").eq("provider_id", id).eq("status", "verified"),
+        svc.from("provider_payout_accounts").select("provider_id").eq("provider_id", id).maybeSingle(),
+        svc.from("provider_agreements").select("provider_id").eq("provider_id", id).eq("agreement_key", "provider-terms").eq("agreement_version", "2026-08-30-v1").maybeSingle(),
+      ]);
       for (const d of verified ?? []) required.delete(d.kind);
-      if (required.size > 0) redirect(`/${locale}/admin/providers?error=documents`);
+      if (required.size > 0 || !payout || !agreement) redirect(`/${locale}/admin/providers?error=documents`);
     }
     await svc.from("providers").update({
       status, reviewed_by: u?.id, reviewed_at: new Date().toISOString(),
@@ -40,7 +44,7 @@ export default async function AdminProvidersPage({ params, searchParams }: { par
   return (
     <div className="container-page py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{t.admin.pendingProviders}</h1>
-      {searchParams.error === "documents" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A cég nem hagyható jóvá, amíg a cégkivonat, adóigazolás, képviselői személyazonosító és bankszámla-igazolás nincs ellenőrizve." : "The company cannot be approved until registration, tax, representative ID and bank documents are verified."}</p>}
+      {searchParams.error === "documents" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A jóváhagyáshoz ellenőrzött cégkivonat, képviselői személyazonosító és bankszámla-igazolás, továbbá elmentett bankszámlaadatok és szerződéselfogadás szükséges." : "Approval requires verified registration, representative ID and bank documents, saved payout details and acceptance of the Provider Terms."}</p>}
       <div className="card mt-6 divide-y divide-lagoon-100">
         {(pending ?? []).map((p) => (
           <div key={p.id} className="flex flex-wrap items-center justify-between gap-4 p-4 text-sm">
