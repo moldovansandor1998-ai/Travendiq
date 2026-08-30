@@ -7,14 +7,14 @@ import { listingSchema } from "@/lib/validation";
 import { MediaUploader } from "./MediaUploader";
 import { CalendarManager } from "./CalendarManager";
 
-type Tab = "basics" | "options" | "media" | "calendar";
+type Tab = "basics" | "options" | "media" | "calendar" | "review";
 
 export default async function ListingEditorPage({
   params, searchParams,
-}: { params: { locale: Locale; id: string }; searchParams: { tab?: string } }) {
+}: { params: { locale: Locale; id: string }; searchParams: { tab?: string; error?: string; submitted?: string } }) {
   const { locale, id } = params;
   const t = getDictionary(locale);
-  const tab = (["basics", "options", "media", "calendar"].includes(searchParams.tab ?? "")
+  const tab = (["basics", "options", "media", "calendar", "review"].includes(searchParams.tab ?? "")
     ? searchParams.tab : "basics") as Tab;
 
   const sb = createClient();
@@ -103,11 +103,7 @@ export default async function ListingEditorPage({
       ...(String(formData.get("title_hu") ?? "")
         ? [{ listing_id: id, locale: "hu", title: String(formData.get("title_hu")) }] : []),
     ]);
-    // The final missing requirement may be completed on this tab. Re-check the
-    // whole listing after saving so submission never depends on which tab was
-    // completed last.
-    await checkAndSubmit();
-    redirect(`/${locale}/provider/listings/${id}?tab=basics&saved=1`);
+    redirect(`/${locale}/provider/listings/${id}?tab=options`);
   }
 
   async function duplicate() {
@@ -189,13 +185,13 @@ export default async function ListingEditorPage({
     redirect(`/${locale}/provider/listings/${id}?tab=options`);
   }
 
-  async function checkAndSubmit() {
+  async function submitForReview() {
     "use server";
     const auth = createClient();
     const { data: { user: actionUser } } = await auth.auth.getUser();
-    if (!actionUser) return;
+    if (!actionUser) redirect(`/${locale}/auth/login`);
     const { data: owned } = await auth.from("listings").select("id").eq("id", id).eq("provider_id", provider!.id).maybeSingle();
-    if (!owned) return;
+    if (!owned) redirect(`/${locale}/provider/dashboard`);
     const svc = createServiceClient();
     const [{ data: listing }, { data: translation }, { count: images }, { count: slots }] = await Promise.all([
       svc.from("listings").select("status, meeting_point, duration_minutes, base_price_adult").eq("id", id).single(),
@@ -210,10 +206,10 @@ export default async function ListingEditorPage({
       translation?.title?.trim().length >= 5 && translation?.description?.trim().length >= 80 &&
       translation?.short_description?.trim().length >= 30 && translation?.includes?.trim() &&
       translation?.excludes?.trim() && (images ?? 0) >= 3 && (slots ?? 0) > 0);
-    if (complete) {
-      await svc.from("listings").update({ status: "pending_review", updated_at: new Date().toISOString() })
-        .eq("id", id).in("status", ["draft", "changes_requested"]);
-    }
+    if (!complete) redirect(`/${locale}/provider/listings/${id}?tab=review&error=incomplete`);
+    await svc.from("listings").update({ status: "pending_review", updated_at: new Date().toISOString() })
+      .eq("id", id).in("status", ["draft", "changes_requested"]);
+    redirect(`/${locale}/provider/listings/${id}?tab=review&submitted=1`);
   }
 
   const tabs: [Tab, string][] = [
@@ -221,6 +217,7 @@ export default async function ListingEditorPage({
     ["options", t.providerArea.optionsExtrasZones],
     ["media", t.providerArea.media],
     ["calendar", t.providerArea.calendarPricing],
+    ["review", locale === "hu" ? "Áttekintés és beküldés" : "Review and submit"],
   ];
 
   return (
@@ -240,7 +237,7 @@ export default async function ListingEditorPage({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="font-semibold text-lagoon-950">{locale === "hu" ? "Program teljessége" : "Activity completeness"}</h2>
-              <p className="mt-1 text-sm text-lagoon-600">{locale === "hu" ? "Nem kell külön beküldened. Ha minden lépést kitöltöttél, a program automatikusan ellenőrzésre kerül." : "No separate submission is needed. The activity is sent for review automatically after every required step is complete."}</p>
+              <p className="mt-1 text-sm text-lagoon-600">{locale === "hu" ? "Haladj végig az 5 lépésen. A program csak az utolsó oldalon, az Ellenőrzésre küldés gombbal kerül beküldésre." : "Complete all 5 steps. The activity is only submitted from the final review page."}</p>
             </div>
             <span className={`badge ${isComplete ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
               {completion.filter((x) => x.ok).length}/{completion.length}
@@ -252,11 +249,11 @@ export default async function ListingEditorPage({
         </section>
       )}
 
-      <nav className="mt-6 flex gap-2 border-b border-lagoon-100 pb-2 text-sm">
-        {tabs.map(([k, label]) => (
+      <nav className="mt-6 flex gap-2 overflow-x-auto border-b border-lagoon-100 pb-3 text-sm">
+        {tabs.map(([k, label], index) => (
           <a key={k} href={`/${locale}/provider/listings/${id}?tab=${k}`}
-            className={`rounded-lg px-3 py-2 font-medium ${tab === k ? "bg-lagoon-700 text-white" : "text-lagoon-700 hover:bg-lagoon-50"}`}>
-            {label}
+            className={`whitespace-nowrap rounded-lg px-3 py-2 font-medium ${tab === k ? "bg-lagoon-700 text-white" : "border border-lagoon-100 bg-white text-lagoon-700 hover:bg-lagoon-50"}`}>
+            {index + 1}. {label}
           </a>
         ))}
       </nav>
@@ -328,7 +325,7 @@ export default async function ListingEditorPage({
             <C name="free_cancel" label={t.search.freeCancellation} defaultChecked={l.free_cancellation} />
             <C name="private_available" label={locale === "hu" ? "Privát foglalás elérhető" : "Private booking available"} defaultChecked={l.is_private_available} />
           </div>
-          <button className="btn-primary" type="submit">{t.common.save}</button>
+          <button className="btn-primary" type="submit">{locale === "hu" ? "Mentés és tovább" : "Save and continue"} →</button>
         </form>
       )}
 
@@ -375,6 +372,8 @@ export default async function ListingEditorPage({
               <button className="btn-secondary py-2" type="submit">+</button>
             </form>
           </Section>
+          <div className="flex justify-end"><a className="btn-primary" href={`/${locale}/provider/listings/${id}?tab=media`}>
+            {locale === "hu" ? "Tovább a képekhez" : "Continue to photos"} →</a></div>
         </div>
       )}
 
@@ -387,7 +386,14 @@ export default async function ListingEditorPage({
               upload: t.providerArea.uploadImage,
               delete: t.providerArea.delete,
               uploading: t.providerArea.uploading,
-            }} onChanged={checkAndSubmit} />
+            }} />
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <span className={`text-sm font-medium ${mediaCount >= 3 ? "text-emerald-700" : "text-amber-700"}`}>
+              {mediaCount >= 3 ? `✓ ${mediaCount} kép feltöltve` : `${mediaCount}/3 kötelező kép feltöltve`}
+            </span>
+            <a aria-disabled={mediaCount < 3} className={`btn-primary ${mediaCount < 3 ? "pointer-events-none opacity-40" : ""}`}
+              href={`/${locale}/provider/listings/${id}?tab=calendar`}>{locale === "hu" ? "Tovább a naptárhoz" : "Continue to calendar"} →</a>
+          </div>
         </div>
       )}
 
@@ -405,6 +411,42 @@ export default async function ListingEditorPage({
               save: t.common.save, blocked: t.providerArea.blocked,
               remaining: t.providerArea.free,
             }} />
+          <div className="mt-6 flex justify-end"><a className="btn-primary" href={`/${locale}/provider/listings/${id}?tab=review`}>
+            {locale === "hu" ? "Tovább az áttekintéshez" : "Continue to review"} →</a></div>
+        </div>
+      )}
+
+      {tab === "review" && (
+        <div className="mt-6 space-y-5">
+          {searchParams.error === "incomplete" && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+            A program még nem teljes. Pótold a pirossal vagy üres körrel jelölt adatokat, majd küldd be újra.
+          </div>}
+          {searchParams.submitted === "1" && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+            A programot sikeresen elküldted ellenőrzésre.
+          </div>}
+          <section className="card p-6">
+            <h2 className="text-xl font-bold text-lagoon-950">{locale === "hu" ? "Program áttekintése" : "Activity review"}</h2>
+            <p className="mt-1 text-sm text-lagoon-600">Ellenőrizd a program minden részét beküldés előtt.</p>
+            <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+              <ReviewItem label="Program neve" value={trEn?.title || "—"} />
+              <ReviewItem label="Helyszín" value={(cities ?? []).find((c) => c.id === l.city_id)?.name || "—"} />
+              <ReviewItem label="Ár" value={`${(l.base_price_adult / 100).toFixed(2)} ${l.currency}`} />
+              <ReviewItem label="Időtartam" value={l.duration_minutes ? `${l.duration_minutes} perc` : "—"} />
+              <ReviewItem label="Képek" value={`${mediaCount} db`} />
+              <ReviewItem label="Foglalható időpontok" value={`${futureSlots ?? 0} db`} />
+            </dl>
+            <div className="mt-6 border-t border-lagoon-100 pt-5">
+              <h3 className="font-semibold">Beküldés előtti ellenőrzőlista</h3>
+              <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                {completion.map((item) => <li key={item.label} className={item.ok ? "text-emerald-700" : "font-medium text-red-700"}>{item.ok ? "✓" : "○"} {item.label}</li>)}
+              </ul>
+            </div>
+          </section>
+          {["draft", "changes_requested"].includes(l.status) && <form action={submitForReview} className="flex justify-end">
+            <button type="submit" disabled={!isComplete} className="btn-primary disabled:cursor-not-allowed disabled:opacity-40">
+              {locale === "hu" ? "Ellenőrzésre küldés" : "Submit for review"}
+            </button>
+          </form>}
         </div>
       )}
     </div>
@@ -436,6 +478,12 @@ function TextArea({ label, name, value }: { label: string; name: string; value: 
       <textarea name={name} rows={4} defaultValue={value} className="input" />
     </div>
   );
+}
+function ReviewItem({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl bg-lagoon-50 p-4">
+    <dt className="text-xs font-semibold uppercase tracking-wide text-lagoon-600">{label}</dt>
+    <dd className="mt-1 font-medium text-lagoon-950">{value}</dd>
+  </div>;
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
