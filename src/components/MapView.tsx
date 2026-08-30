@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { formatMoney } from "@/lib/utils";
@@ -19,10 +19,25 @@ export function MapView({ items, locale }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const pts = useMemo(() => items.filter((i) => i.lat != null && i.lng != null), [items]);
+
+  const fallbackBounds = pts.length
+    ? (() => {
+        const lngs = pts.map((p) => p.lng!);
+        const lats = pts.map((p) => p.lat!);
+        const padding = 0.08;
+        return [
+          Math.min(...lngs) - padding,
+          Math.min(...lats) - padding,
+          Math.max(...lngs) + padding,
+          Math.max(...lats) + padding,
+        ];
+      })()
+    : [-12, 32, 42, 64];
+  const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${fallbackBounds.join("%2C")}&layer=mapnik`;
 
   useEffect(() => {
     if (!ref.current) return;
-    const pts = items.filter((i) => i.lat != null && i.lng != null);
     const center: [number, number] = pts.length
       ? [pts[0].lng!, pts[0].lat!]
       : [33.81, 27.25];
@@ -69,16 +84,17 @@ export function MapView({ items, locale }: {
         .addTo(map);
     }
     return () => map.remove();
-  }, [items, locale]);
+  }, [pts, locale]);
 
   if (failed) {
-    // hibakezelt fallback: a lista továbbra is elérhető térkép nélkül
     return (
-      <div className="flex h-[560px] w-full items-center justify-center rounded-2xl border border-lagoon-100 bg-sand-50 text-sm text-lagoon-500" role="note">
-        {locale === "hu"
-          ? "A térkép jelenleg nem érhető el – az eredmények a listában megtekinthetők."
-          : "Map is currently unavailable – results are listed below."}
-      </div>
+      <iframe
+        className="h-[560px] w-full rounded-2xl border border-lagoon-100"
+        src={fallbackMapUrl}
+        title={locale === "hu" ? "Keresési térkép" : "Search map"}
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
     );
   }
 
