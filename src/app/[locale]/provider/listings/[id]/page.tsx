@@ -103,6 +103,10 @@ export default async function ListingEditorPage({
       ...(String(formData.get("title_hu") ?? "")
         ? [{ listing_id: id, locale: "hu", title: String(formData.get("title_hu")) }] : []),
     ]);
+    // The final missing requirement may be completed on this tab. Re-check the
+    // whole listing after saving so submission never depends on which tab was
+    // completed last.
+    await checkAndSubmit();
     redirect(`/${locale}/provider/listings/${id}?tab=basics&saved=1`);
   }
 
