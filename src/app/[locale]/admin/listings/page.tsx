@@ -30,6 +30,9 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
   async function review(formData: FormData) {
     "use server";
     const actionClient = createClient(); const { data: { user: actor } } = await actionClient.auth.getUser();
+    if (!actor) redirect(`/${locale}/auth/login`);
+    const { data: actorIsAdmin } = await actionClient.rpc("is_admin");
+    if (!actorIsAdmin) redirect(`/${locale}`);
     const id = String(formData.get("id")); const action = String(formData.get("action"));
     const status = action === "publish" ? "published"
       : action === "changes" ? "changes_requested"
