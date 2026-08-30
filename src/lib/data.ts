@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
 import type { ListingCardData } from "@/components/ListingCard";
+import { MARKETPLACE_LIVE } from "@/lib/launch";
 
 export interface ListingFilters {
   locale: Locale;
@@ -30,6 +31,7 @@ export interface ListingFilters {
 
 /** Listing + fordítás lekérése locale-fallback-kel, teljes szűrőkészlettel. */
 export async function queryListings(opts: ListingFilters): Promise<ListingCardData[]> {
+  if (!MARKETPLACE_LIVE) return [];
   const supabase = createClient();
 
   const needsAvailability = Boolean(opts.date);
