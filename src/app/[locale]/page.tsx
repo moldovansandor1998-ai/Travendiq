@@ -7,8 +7,8 @@ import { SafeImage } from "@/components/SafeImage";
 import { Icon } from "@/components/Icon";
 
 const DESTINATION_IMAGES: Record<string, string> = {
-  hurghada: "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?w=900",
-  cairo: "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?w=900",
+  hurghada: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900",
+  cairo: "https://images.unsplash.com/photo-1568322445389-f64ac2515020?w=900",
   luxor: "https://images.unsplash.com/photo-1568322445389-f64ac2515020?w=900",
   budapest: "https://images.unsplash.com/photo-1549877452-9c387954fbc2?w=900",
   london: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=900",
@@ -63,7 +63,7 @@ export default async function HomePage({ params, searchParams }: { params: { loc
         </div>
       </section>
 
-      <section className="border-b border-lagoon-100 bg-white" aria-label={locale === "hu" ? "Foglalási előnyök" : "Booking benefits"}>
+      {process.env.NEXT_PUBLIC_MARKETPLACE_LIVE === "true" && <><section className="border-b border-lagoon-100 bg-white" aria-label={locale === "hu" ? "Foglalási előnyök" : "Booking benefits"}>
         <div className="container-page grid gap-5 py-6 sm:grid-cols-2 lg:grid-cols-4">
           <Benefit icon="shield" title={locale === "hu" ? "Biztonságos foglalás" : "Book with confidence"}
             text={locale === "hu" ? "Átlátható árak és ellenőrzött szolgáltatók" : "Clear prices and reviewed providers"} />
@@ -141,7 +141,7 @@ export default async function HomePage({ params, searchParams }: { params: { loc
             ))}
           </div>
         </section>
-      </div>
+      </div></>}
     </div>
   );
 }
