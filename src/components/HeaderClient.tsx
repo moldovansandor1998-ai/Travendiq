@@ -84,7 +84,7 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
 export function MobileMenu({ locale, labels }: {
   locale: Locale;
   labels: {
-    search: string; map: string; provider: string; signIn: string;
+    search: string; map: string; provider: string; signIn: string; signUp: string;
     affiliate: string; favorites: string; account: string; menu: string;
   };
 }) {
@@ -135,7 +135,10 @@ export function MobileMenu({ locale, labels }: {
                 </Link>
               ))}
             </nav>
-            <Link href={`/${locale}/auth/login`} className="btn-primary mt-4 w-full">
+            <Link href={`/${locale}/auth/register`} className="btn-secondary mt-4 w-full">
+              {labels.signUp}
+            </Link>
+            <Link href={`/${locale}/auth/login`} className="btn-primary mt-2 w-full">
               {labels.signIn}
             </Link>
           </div>

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const sb = createClient();
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${origin}${next}` },
+    options: { emailRedirectTo: `${origin}${next}`, shouldCreateUser: false },
   });
   if (error) {
     console.error("[auth/login] signInWithOtp failed:", error.message);

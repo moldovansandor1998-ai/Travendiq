@@ -197,6 +197,7 @@
     "chargebacks": "Chargebacks"
   },
   "auth": {
+    "name": "Full name",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
@@ -205,7 +206,7 @@
     "checkEmail": "Check your inbox for the confirmation link.",
     "checkEmailLogin": "Check your inbox for the sign-in link.",
     "rateLimited": "Too many attempts. Please try again later.",
-    "sendFailed": "Could not send the sign-in email. Please try again."
+    "sendFailed": "Could not send the email. Please try again."
   },
   "footer": {
     "legal": "Legal",

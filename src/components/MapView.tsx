@@ -14,10 +14,8 @@ import { formatMoney } from "@/lib/utils";
  * alkalmazásforgalomra – ezért production buildben NEM használjuk: ilyenkor a
  * térkép helyett hibakezelt fallback jelenik meg.
  */
-const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL ??
-  (process.env.NODE_ENV === "production"
-    ? null // élesben nincs csendes OSM-demo fallback
-    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL ?? null;
+const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/liberty";
 const ATTRIBUTION = process.env.NEXT_PUBLIC_MAP_ATTRIBUTION ?? "© OpenStreetMap contributors";
 
 export function MapView({ items, locale }: {
@@ -28,7 +26,7 @@ export function MapView({ items, locale }: {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!ref.current || !TILE_URL) return;
+    if (!ref.current) return;
     const pts = items.filter((i) => i.lat != null && i.lng != null);
     const center: [number, number] = pts.length
       ? [pts[0].lng!, pts[0].lat!]
@@ -38,7 +36,7 @@ export function MapView({ items, locale }: {
     try {
       map = new maplibregl.Map({
         container: ref.current,
-        style: {
+        style: TILE_URL ? {
           version: 8,
           sources: {
             base: {
@@ -49,7 +47,7 @@ export function MapView({ items, locale }: {
             },
           },
           layers: [{ id: "base", type: "raster", source: "base" }],
-        },
+        } : STYLE_URL,
         center,
         zoom: pts.length ? 10 : 3,
       });
@@ -75,7 +73,7 @@ export function MapView({ items, locale }: {
     return () => map.remove();
   }, [items, locale]);
 
-  if (!TILE_URL || failed) {
+  if (failed) {
     // hibakezelt fallback: a lista továbbra is elérhető térkép nélkül
     return (
       <div className="flex h-[560px] w-full items-center justify-center rounded-2xl border border-lagoon-100 bg-sand-50 text-sm text-lagoon-500" role="note">

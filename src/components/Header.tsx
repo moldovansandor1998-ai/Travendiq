@@ -33,6 +33,12 @@ export function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
             {t.nav.becomeProvider}
           </Link>
           <Link
+            href={`/${locale}/auth/register`}
+            className="btn-secondary btn-sm hidden sm:inline-flex"
+          >
+            {t.auth.signUp}
+          </Link>
+          <Link
             href={`/${locale}/auth/login`}
             className="btn-primary btn-sm hidden sm:inline-flex"
           >
@@ -45,6 +51,7 @@ export function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
               map: t.search.mapView,
               provider: t.nav.becomeProvider,
               signIn: t.nav.signIn,
+              signUp: t.auth.signUp,
               affiliate: "Affiliate",
               favorites: t.nav.favorites,
               account: t.nav.bookings,

@@ -41,7 +41,7 @@ const btn = (href: string, label: string) =>
 
 const en: TplSet = {
   registration: { subject: "Welcome to Travendiq", body: (v) => `<p>Hi ${e(v.name)},</p><p>your Travendiq account is ready. Discover and book experiences worldwide.</p>` },
-  email_confirmation: { subject: "Confirm your email", body: (v) => `<p>Please confirm your email address to finish setting up your account.</p>${v.link ? btn(v.link, "Confirm email") : ""}` },
+  email_confirmation: { subject: "Confirm your Travendiq account", body: (v) => `<p>Welcome to Travendiq${v.name ? `, ${e(v.name)}` : ""}.</p><p>Please confirm your email address to activate your account and start discovering experiences.</p>${v.link ? btn(v.link, "Confirm my email") : ""}<p style="margin-top:20px;color:#6b7280;font-size:12px">This secure link can only be used once. If you did not create a Travendiq account, you can safely ignore this email.</p>` },
   provider_application: { subject: "Provider application received", body: () => `<p>Thank you for applying as a Travendiq provider. Our team will review your application and documents. You can publish paid experiences after approval.</p>` },
   provider_docs_required: { subject: "Additional documents required", body: (v) => `<p>We need additional documents to verify your provider account:</p><p><b>${e(v.missingDocs)}</b></p><p>Please upload them in your provider dashboard.</p>` },
   provider_approved: { subject: "Your provider account is approved", body: (v) => `<p>Great news${v.name ? `, ${e(v.name)}` : ""}! Your provider account has been approved. You can now publish and sell experiences on Travendiq.</p>` },
