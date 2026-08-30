@@ -6,13 +6,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { formatMoney } from "@/lib/utils";
 
 /**
- * Térképes keresés – MapLibre GL, KONFIGURÁLHATÓ tile provider.
- *
- * Éles környezetben a NEXT_PUBLIC_MAP_TILE_URL KÖTELEZŐ (szerződött provider,
- * pl. MapTiler/Protomaps/saját szerver). Az OSM nyilvános demo tile szervert
- * (tile.openstreetmap.org) az OSM felhasználási feltételei TILTJÁK éles
- * alkalmazásforgalomra – ezért production buildben NEM használjuk: ilyenkor a
- * térkép helyett hibakezelt fallback jelenik meg.
+ * Térképes keresés – MapLibre GL, konfigurálható tile providerrel.
+ * Saját raster URL hiányában az OpenFreeMap nyilvános MapLibre-stílusát használja.
  */
 const TILE_URL = process.env.NEXT_PUBLIC_MAP_TILE_URL ?? null;
 const STYLE_URL = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/liberty";
@@ -56,7 +51,10 @@ export function MapView({ items, locale }: {
       return;
     }
     map.addControl(new maplibregl.NavigationControl(), "top-right");
-    map.on("error", () => setFailed(true));
+
+    // Egy hiányzó sprite/glyph vagy átmeneti tile-hiba nem teszi használhatatlanná
+    // az egész térképet. A MapLibre ezeket is `error` eseményként jelzi, ezért
+    // nem cseréljük le automatikusan a már létrejött térképet a fallbackre.
 
     for (const p of pts) {
       const el = document.createElement("div");
