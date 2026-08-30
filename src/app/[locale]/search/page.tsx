@@ -59,6 +59,12 @@ export default async function SearchPage({
 
   return (
     <div className="container-page py-8">
+      <form className="card mb-7 grid gap-2 p-2 sm:grid-cols-[1fr_170px_130px_auto]" action={`/${locale}/search`}>
+        <input name="q" defaultValue={get("q") ?? ""} placeholder={t.home.searchPlaceholder} className="input border-0" aria-label={t.home.searchPlaceholder} />
+        <input name="date" type="date" defaultValue={get("date")} className="input border-0" aria-label={t.common.date} />
+        <input name="guests" type="number" min="1" defaultValue={get("guests") ?? "2"} className="input border-0" aria-label={t.home.guests} />
+        <button className="btn-primary" type="submit">{t.home.search}</button>
+      </form>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-lagoon-950">{t.nav.search}</h1>

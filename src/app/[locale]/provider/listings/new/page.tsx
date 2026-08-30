@@ -8,7 +8,7 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80);
 }
 
-export default async function NewListingPage({ params }: { params: { locale: Locale } }) {
+export default async function NewListingPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
   const { locale } = params;
   const t = getDictionary(locale);
   const sb = createClient();
@@ -19,13 +19,15 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
     .eq("owner_id", user.id).maybeSingle();
   if (!provider) redirect(`/${locale}/provider/register`);
 
-  const { data: categories } = await sb.from("categories").select("id, slug")
+  const { data: categories } = await sb.from("categories").select("id, slug, translations:category_translations(locale,name)")
     .eq("is_active", true).order("sort_order");
   const { data: cities } = await sb.from("cities").select("id, name, country_code").eq("is_active", true);
 
   async function createListing(formData: FormData) {
     "use server";
     const sb = createClient();
+    const { data: { user: actionUser } } = await sb.auth.getUser();
+    if (!actionUser) redirect(`/${locale}/auth/login`);
     const title = String(formData.get("title_en") ?? "");
     const cityId = String(formData.get("city_id"));
     const city = (cities ?? []).find((c) => c.id === cityId);
@@ -47,23 +49,14 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
       meeting_point: String(formData.get("meeting_point") ?? ""),
     }).select("id").single();
 
-    if (!error && listing) {
-      await sb.from("listing_translations").insert([
+    if (error || !listing) redirect(`/${locale}/provider/listings/new?error=create`);
+    const { error: translationError } = await sb.from("listing_translations").insert([
         { listing_id: listing.id, locale: "en", title, description: String(formData.get("description_en") ?? "") },
         ...(String(formData.get("title_hu") ?? "")
           ? [{ listing_id: listing.id, locale: "hu", title: String(formData.get("title_hu")) }] : []),
       ]);
-      // alap elérhetőség: következő 60 nap
-      const days = Array.from({ length: 60 }, (_, i) => {
-        const d = new Date(Date.now() + (i + 1) * 86400000);
-        return {
-          listing_id: listing.id, date: d.toISOString().slice(0, 10),
-          start_time: "09:00", capacity: Number(formData.get("max_participants") ?? 20),
-        };
-      });
-      await sb.from("availability").insert(days);
-    }
-    redirect(`/${locale}/provider/dashboard`);
+    if (translationError) redirect(`/${locale}/provider/listings/${listing.id}?tab=basics&error=translation`);
+    redirect(`/${locale}/provider/listings/${listing.id}?created=1&tab=media`);
   }
 
   return (
@@ -74,6 +67,12 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
           {t.provider.pendingReview}
         </p>
       )}
+      <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs font-semibold text-lagoon-600">
+        <span className="rounded-lg bg-lagoon-700 px-2 py-3 text-white">1. {locale === "hu" ? "Alapadatok" : "Basics"}</span>
+        <span className="rounded-lg bg-lagoon-50 px-2 py-3">2. {locale === "hu" ? "Képek és opciók" : "Media & options"}</span>
+        <span className="rounded-lg bg-lagoon-50 px-2 py-3">3. {locale === "hu" ? "Naptár és beküldés" : "Calendar & review"}</span>
+      </div>
+      {searchParams.error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{locale === "hu" ? "A program mentése nem sikerült. Ellenőrizd az adatokat, majd próbáld újra." : "The activity could not be saved. Check the details and try again."}</p>}
       <form action={createListing} className="card mt-6 space-y-4 p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -87,7 +86,7 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
           <div>
             <label className="mb-1 block text-sm font-medium text-lagoon-700">{t.home.categories}</label>
             <select name="category_id" required className="input">
-              {(categories ?? []).map((c) => <option key={c.id} value={c.id}>{c.slug}</option>)}
+              {(categories ?? []).map((c) => { const trs = c.translations as { locale: string; name: string }[]; return <option key={c.id} value={c.id}>{trs?.find((x) => x.locale === locale)?.name ?? trs?.find((x) => x.locale === "en")?.name ?? c.slug}</option>; })}
             </select>
           </div>
           <div>
@@ -102,7 +101,7 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-lagoon-700">{t.search.duration} (perc)</label>
-            <input name="duration" type="number" min="0" className="input" />
+            <input name="duration" type="number" min="15" required className="input" />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-lagoon-700">Max. férőhely</label>
@@ -118,11 +117,12 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-lagoon-700">Description (EN)</label>
-          <textarea name="description_en" rows={5} className="input" />
+          <textarea name="description_en" rows={5} required minLength={80} className="input" />
+          <p className="mt-1 text-xs text-lagoon-500">{locale === "hu" ? "Legalább 80 karakter: írd le pontosan, mit él át és mit kap a vendég." : "At least 80 characters: explain exactly what the guest will experience and receive."}</p>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-lagoon-700">{t.listing.meetingPoint}</label>
-          <input name="meeting_point" className="input" />
+          <input name="meeting_point" required className="input" />
         </div>
         <div className="flex flex-wrap gap-6 text-sm">
           <label className="flex items-center gap-2 font-medium text-lagoon-700">
@@ -138,7 +138,10 @@ export default async function NewListingPage({ params }: { params: { locale: Loc
             <input type="radio" name="confirmation" value="manual" /> {t.listing.manualConfirmation}
           </label>
         </div>
-        <button className="btn-primary" type="submit">{t.common.save}</button>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-lagoon-100 pt-4">
+          <p className="text-xs text-lagoon-500">{locale === "hu" ? "Piszkozatként mentjük. A program csak ellenőrzés és jóváhagyás után jelenik meg." : "Saved as a draft. It only becomes public after review and approval."}</p>
+          <button className="btn-primary" type="submit">{locale === "hu" ? "Mentés és tovább a képekhez" : "Save and add photos"}</button>
+        </div>
       </form>
     </div>
   );

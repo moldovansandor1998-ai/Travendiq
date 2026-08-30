@@ -73,7 +73,7 @@ export default async function ProviderDashboard({ params }: { params: { locale: 
             </div>
           );
         })}
-        {(listings ?? []).length === 0 && <p className="p-4 text-sm text-lagoon-500">–</p>}
+        {(listings ?? []).length === 0 && <EmptyState title={locale === "hu" ? "Még nincs programod" : "No activities yet"} text={locale === "hu" ? "Hozd létre az első programodat, majd adj hozzá képeket, opciókat és időpontokat." : "Create your first activity, then add photos, options and availability."} href={`/${locale}/provider/listings/new`} action={t.provider.newListing} />}
       </div>
 
       <h2 className="mt-10 text-xl font-bold text-lagoon-950">{t.provider.bookings}</h2>
@@ -91,10 +91,14 @@ export default async function ProviderDashboard({ params }: { params: { locale: 
             </div>
           </div>
         ))}
-        {(bookings ?? []).length === 0 && <p className="p-4 text-sm text-lagoon-500">–</p>}
+        {(bookings ?? []).length === 0 && <EmptyState title={locale === "hu" ? "Még nincs foglalás" : "No bookings yet"} text={locale === "hu" ? "Az új foglalások itt jelennek meg, és a Foglalások oldalon szűrhetők, exportálhatók." : "New bookings appear here and can be filtered or exported from Bookings."} href={`/${locale}/provider/bookings`} action={locale === "hu" ? "Foglalások megnyitása" : "Open bookings"} />}
       </div>
     </div>
   );
+}
+
+function EmptyState({ title, text, href, action }: { title: string; text: string; href: string; action: string }) {
+  return <div className="flex flex-col items-start justify-between gap-3 p-6 sm:flex-row sm:items-center"><div><p className="font-semibold text-lagoon-900">{title}</p><p className="mt-1 text-sm text-lagoon-600">{text}</p></div><Link href={href} className="btn-secondary shrink-0 px-3 py-2 text-sm">{action}</Link></div>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
