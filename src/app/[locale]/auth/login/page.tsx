@@ -10,10 +10,10 @@ export default function LoginPage({ params }: { params: { locale: Locale } }) {
       labels={{
         title: t.auth.signIn,
         email: t.auth.email,
-        submit: t.auth.magicLink,
-        sent: t.auth.checkEmailLogin,
+        password: t.auth.password,
+        submit: t.auth.signIn,
         rateLimited: t.auth.rateLimited,
-        sendFailed: t.auth.sendFailed,
+        invalidCredentials: locale === "hu" ? "Hibás email-cím vagy jelszó." : "Incorrect email or password.",
       }}
     />
   );
