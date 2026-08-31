@@ -5,7 +5,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 /** Utaslista export (CSV) – csak a szolgáltató saját foglalásai. */
 export async function GET(req: NextRequest) {
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

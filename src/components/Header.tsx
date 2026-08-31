@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
   const marketplaceLive = process.env.NEXT_PUBLIC_MARKETPLACE_LIVE === "true";
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   let isAdmin = false;
   let hasProvider = false;
@@ -23,7 +23,7 @@ export async function Header({ locale, t }: { locale: Locale; t: Dictionary }) {
 
   async function signOut() {
     "use server";
-    const auth = createClient();
+    const auth = await createClient();
     await auth.auth.signOut();
     redirect(`/${locale}`);
   }

@@ -4,7 +4,8 @@ import { requireAdmin, audit } from "@/lib/admin";
 import { couponSchema } from "@/lib/validation";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminCoupons({ params }: { params: { locale: Locale } }) {
+export default async function AdminCoupons(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

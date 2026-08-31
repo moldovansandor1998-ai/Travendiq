@@ -3,10 +3,14 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, audit } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminCms({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { slug?: string; plocale?: string };
-}) {
+export default async function AdminCms(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ slug?: string; plocale?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

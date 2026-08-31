@@ -4,13 +4,17 @@ import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AcceptTeamInvitation({ params, searchParams }: {
-  params: { locale: Locale }; searchParams: { token?: string; done?: string; error?: string };
-}) {
+export default async function AcceptTeamInvitation(
+  props: {
+    params: Promise<{ locale: Locale }>; searchParams: Promise<{ token?: string; done?: string; error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const token = String(searchParams.token ?? "");
   if (!token) redirect(`/${locale}`);
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   const next = `/${locale}/provider/team/accept?token=${encodeURIComponent(token)}`;
   if (!user) redirect(`/${locale}/auth/login?next=${encodeURIComponent(next)}`);
@@ -23,7 +27,7 @@ export default async function AcceptTeamInvitation({ params, searchParams }: {
 
   async function accept() {
     "use server";
-    const auth = createClient();
+    const auth = await createClient();
     const { data: { user: u } } = await auth.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login?next=${encodeURIComponent(next)}`);
     const service = createServiceClient();

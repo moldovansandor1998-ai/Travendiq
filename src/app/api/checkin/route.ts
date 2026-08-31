@@ -10,7 +10,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
  * Offline mód: a kliens a tokeneket előre letöltheti, a sync flaggel tölti fel.
  */
 async function authorize(providerId: string): Promise<boolean> {
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return false;
   // jogosultsági RPC-hiba NEM csendes (fail-closed: hibánál NEM jogosult)

@@ -8,11 +8,15 @@ import { sendEmail } from "@/lib/email";
 
 const ALL_PERMISSIONS = ["bookings.read", "bookings.write", "listings.write", "checkin", "finance.read"] as const;
 
-export default async function ProviderTeam({ params, searchParams }: { params: { locale: Locale }; searchParams: { invited?: string; added?: string; error?: string } }) {
+export default async function ProviderTeam(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ invited?: string; added?: string; error?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const pt = t.providerTeam as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers").select("id, display_name").eq("owner_id", user.id).maybeSingle();
@@ -29,7 +33,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
 
   async function addMember(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const { data: prov } = await sb2.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
@@ -81,7 +85,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
 
   async function removeMember(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const { data: prov } = await sb2.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
@@ -101,7 +105,7 @@ export default async function ProviderTeam({ params, searchParams }: { params: {
 
   async function resendInvitation(formData: FormData) {
     "use server";
-    const session = createClient();
+    const session = await createClient();
     const { data: { user: u } } = await session.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const svc = createServiceClient();

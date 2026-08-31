@@ -1,15 +1,25 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import type { Locale } from "@/lib/i18n";
+import { isLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({ children, params }: {
-  children: ReactNode;
-  params: { locale: Locale };
-}) {
-  const { locale } = params;
+export default async function AdminLayout(
+  props: {
+    children: ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
+  if (!isLocale(params.locale)) notFound();
+  const locale = params.locale;
   await requireAdmin(locale);
   const hu = locale === "hu";
   const links = [

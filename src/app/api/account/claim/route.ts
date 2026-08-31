@@ -9,7 +9,7 @@ import { resolveLocale } from "@/lib/i18n/locales";
  * A locale csak támogatott érték lehet; a DB-hiba nem marad csendben.
  */
 export async function GET(req: NextRequest) {
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   const locale = resolveLocale(req.nextUrl.searchParams.get("locale"));
   if (!user?.email) {

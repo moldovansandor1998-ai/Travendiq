@@ -1,18 +1,28 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getDictionary, type Locale } from "@/lib/i18n";
+import { getDictionary, isLocale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProviderLayout({ children, params }: {
-  children: ReactNode;
-  params: { locale: Locale };
-}) {
-  const { locale } = params;
+export default async function ProviderLayout(
+  props: {
+    children: ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
+  if (!isLocale(params.locale)) notFound();
+  const locale = params.locale;
   const t = getDictionary(locale);
   const pd = t.providerDash as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   const { data: provider } = user
     ? await sb.from("providers").select("id").eq("owner_id", user.id).limit(1).maybeSingle()

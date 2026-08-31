@@ -5,14 +5,18 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { ConnectButton } from "./ConnectButton";
 
-export default async function ProviderSettings({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { connect?: string };
-}) {
+export default async function ProviderSettings(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ connect?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const ps = t.providerSettings as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers")
@@ -31,7 +35,7 @@ export default async function ProviderSettings({ params, searchParams }: {
 
   async function saveProfile(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const name = String(formData.get("display_name") ?? "").trim();

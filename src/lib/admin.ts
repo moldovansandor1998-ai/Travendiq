@@ -3,7 +3,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 /** Admin-hozzáférés ellenőrzése oldalakon és server actionökben. */
 export async function requireAdmin(locale: string) {
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: isAdmin } = (await sb.rpc("is_admin")) as { data: boolean | null };

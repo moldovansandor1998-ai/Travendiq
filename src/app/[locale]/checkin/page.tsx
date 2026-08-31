@@ -6,10 +6,11 @@ import { Scanner } from "./Scanner";
 export const dynamic = "force-dynamic";
 
 /** Beléptető felület – csak checkin joggal rendelkező munkatárs / staff. */
-export default async function CheckinPage({ params }: { params: { locale: Locale } }) {
+export default async function CheckinPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

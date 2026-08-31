@@ -9,9 +9,9 @@ type SP = Record<string, string | string[] | undefined>;
 
 const LANGUAGES = ["en", "hu", "de", "fr", "es", "it", "ro", "pl", "ar"];
 
-export default async function SearchPage({
-  params, searchParams,
-}: { params: { locale: Locale }; searchParams: SP }) {
+export default async function SearchPage(props: { params: Promise<{ locale: Locale }>; searchParams: Promise<SP> }) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const get = (k: string) => (typeof searchParams[k] === "string" ? (searchParams[k] as string) : undefined);

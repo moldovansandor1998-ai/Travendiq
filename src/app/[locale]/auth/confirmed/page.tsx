@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { type Locale } from "@/lib/i18n";
 
-export default function ConfirmedPage({ params, searchParams }: {
-  params: { locale: Locale }; searchParams: { error?: string };
-}) {
+export default async function ConfirmedPage(
+  props: {
+    params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const failed = Boolean(searchParams.error);
   return (
     <div className="container-page max-w-lg py-20 text-center">

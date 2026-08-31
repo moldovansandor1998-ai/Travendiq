@@ -17,7 +17,8 @@ import { voucherLabels } from "@/lib/voucher-i18n";
  * A tokent nem naplózzuk és a válaszban sem jelenítjük meg.
  * A feliratok és a listing címe a booking.customer_locale-t követik (en fallback).
  */
-export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ code: string }> }) {
+  const params = await props.params;
   const token = req.nextUrl.searchParams.get("token");
   const format = req.nextUrl.searchParams.get("format") ?? "html";
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
 
   // 2) bejelentkezett tulajdonos: session user == booking.user_id (token nélkül)
   if (!authorized && b.user_id) {
-    const session = createClient();
+    const session = await createClient();
     const { data: { user } } = await session.auth.getUser();
     if (user && user.id === b.user_id) authorized = true;
   }

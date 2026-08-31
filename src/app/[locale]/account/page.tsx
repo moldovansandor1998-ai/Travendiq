@@ -9,10 +9,11 @@ import type { BookingStatus } from "@/lib/booking/status";
 export const dynamic = "force-dynamic";
 
 /** Vásárlói fiók: saját foglalások listája. */
-export default async function AccountPage({ params }: { params: { locale: Locale } }) {
+export default async function AccountPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

@@ -7,9 +7,11 @@ import { getBookingWithAccess } from "@/lib/booking/access";
 export const dynamic = "force-dynamic";
 
 /** Értékelés küldése – kizárólag teljesített (completed/attended) foglalás után. */
-export default async function NewReviewPage({
-  params, searchParams,
-}: { params: { locale: Locale }; searchParams: { booking?: string; token?: string; error?: string } }) {
+export default async function NewReviewPage(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ booking?: string; token?: string; error?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const bookingId = searchParams.booking;
@@ -20,7 +22,7 @@ export default async function NewReviewPage({
   const b = access.booking as { id: string; status: string; user_id: string | null; listing_id: string; code: string };
   if (!["completed", "attended"].includes(b.status)) redirect(`/${locale}/account`);
 
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
 
   async function submit(formData: FormData) {

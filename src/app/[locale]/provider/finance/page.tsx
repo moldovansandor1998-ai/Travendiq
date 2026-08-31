@@ -4,11 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/utils";
 import { getDictionary, type Locale } from "@/lib/i18n";
 
-export default async function ProviderFinance({ params }: { params: { locale: Locale } }) {
+export default async function ProviderFinance(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const pf = t.providerFinance as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers")

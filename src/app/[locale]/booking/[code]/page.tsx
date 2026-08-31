@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createServiceClient } from "@/lib/supabase/server";
 import { signVoucher, voucherQrDataUrl } from "@/lib/qr";
@@ -11,28 +12,32 @@ import { BookingActions } from "./BookingActions";
 export const dynamic = "force-dynamic";
 type Booking = { id:string; code:string; status:BookingStatus; date:string; start_time:string; adults:number; children:number; infants:number; grand_total:number; currency:string; listing_id:string; customer_locale:string; user_id:string|null; cancel_reason:string|null; lead_name:string|null; lead_email:string|null; lead_phone:string|null; hotel_name:string|null; pickup_address:string|null; pickup_notes:string|null; special_requests:string|null; paid_at:string|null; confirmed_at:string|null; created_at:string };
 
-export default async function BookingPage({ params, searchParams }: { params:{locale:Locale;code:string}; searchParams:{paid?:string;token?:string} }) {
-  const {locale,code}=params; const t=getDictionary(locale);
+export default async function BookingPage(
+  props: { params: Promise<{locale:Locale;code:string}>; searchParams: Promise<{paid?:string;token?:string}> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const {locale,code}=params;const t=getDictionary(locale);
   const access=await getBookingWithAccess({code},searchParams.token??null);
   if(!access.ok){if(access.reason==="not_found")notFound();return <div className="container-page max-w-xl py-16 text-center"><h1 className="text-xl font-bold">403</h1><p className="mt-2 text-lagoon-600">{t.booking.noAccess}</p></div>}
-  const b=access.booking as Booking; const sb=createServiceClient();
+  const b=access.booking as Booking;const sb=createServiceClient();
   const {data:listing}=await sb.from("listings").select(`slug,duration_minutes,meeting_point,has_transfer,free_cancellation,cancel_full_hours,translations:listing_translations(locale,title,description,includes,excludes,bring_with,important_info),media:listing_media(kind,url,sort_order),zones:listing_transfer_zones(zone_name,pickup_from,pickup_to,pickup_fee,note),provider:providers(display_name,contact_name,contact_phone,contact_email)`).eq("id",b.listing_id).single();
-  const trs=(listing?.translations??[]) as any[]; const tr=trs.find(x=>x.locale===locale)??trs.find(x=>x.locale==="en")??trs[0];
-  const media=[...((listing?.media??[]) as any[])].sort((a,z)=>a.sort_order-z.sort_order); const hero=media.find(m=>m.kind==="image")?.url;
-  const provider=listing?.provider as any; const token=access.via==="owner"?null:(searchParams.token??null); const tokenQuery=token?`?token=${encodeURIComponent(token)}`:"";
+  const trs=(listing?.translations??[]) as any[];const tr=trs.find(x=>x.locale===locale)??trs.find(x=>x.locale==="en")??trs[0];
+  const media=[...((listing?.media??[]) as any[])].sort((a,z)=>a.sort_order-z.sort_order);const hero=media.find(m=>m.kind==="image")?.url;
+  const provider=listing?.provider as any;const token=access.via==="owner"?null:(searchParams.token??null);const tokenQuery=token?`?token=${encodeURIComponent(token)}`:"";
   const voucherUrl=`/api/voucher/${b.code}${token?`?token=${encodeURIComponent(token)}&format=pdf`:"?format=pdf"}`;
   const participants=[b.adults?`${b.adults} felnőtt`:"",b.children?`${b.children} gyermek`:"",b.infants?`${b.infants} csecsemő`:""].filter(Boolean).join(", ");
-  const startsAt=new Date(`${b.date}T${String(b.start_time).slice(0,8)}`); const completed=["completed","attended"].includes(b.status)||startsAt.getTime()<Date.now();
-  const dateLabel=new Intl.DateTimeFormat(locale,{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(startsAt); const duration=formatDuration(listing?.duration_minutes??null,locale);
-  const pickup=b.pickup_address||b.hotel_name||listing?.meeting_point||"—"; const mapUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pickup)}`;
+  const startsAt=new Date(`${b.date}T${String(b.start_time).slice(0,8)}`);const completed=["completed","attended"].includes(b.status)||startsAt.getTime()<Date.now();
+  const dateLabel=new Intl.DateTimeFormat(locale,{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(startsAt);const duration=formatDuration(listing?.duration_minutes??null,locale);
+  const pickup=b.pickup_address||b.hotel_name||listing?.meeting_point||"—";const mapUrl=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pickup)}`;
   const calendarUrl=googleCalendarUrl(tr?.title||"Travendiq program",startsAt,listing?.duration_minutes??60,pickup,`${b.code} · ${provider?.display_name||"Travendiq"}`);
-  const cancelDeadline=new Date(startsAt.getTime()-(listing?.cancel_full_hours??24)*3600000); const canShowContact=!["pending_payment","expired"].includes(b.status)&&provider;
-  const whatsapp=provider?.contact_phone?.replace(/^00/ ,"+").replace(/[^0-9+]/g,"")??""; let qr:string|null=null;
+  const cancelDeadline=new Date(startsAt.getTime()-(listing?.cancel_full_hours??24)*3600000);const canShowContact=!["pending_payment","expired"].includes(b.status)&&provider;
+  const whatsapp=provider?.contact_phone?.replace(/^00/ ,"+").replace(/[^0-9+]/g,"")??"";let qr:string|null=null;
   if(["confirmed","attended","pending_confirmation","completed"].includes(b.status)&&process.env.VOUCHER_SIGNING_SECRET)qr=await voucherQrDataUrl(signVoucher({code:b.code,exp:b.date}));
 
   return <main className="min-h-screen bg-[#f2f4f7] pb-16">
     <section className="relative mx-auto h-[360px] max-w-4xl overflow-hidden bg-lagoon-950 sm:rounded-b-[2rem]">
-      {hero?<img src={hero} alt={tr?.title||"Program"} className="h-full w-full object-cover opacity-80"/>:<div className="h-full bg-gradient-to-br from-lagoon-800 to-lagoon-950"/>}<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/25"/>
+      {hero?<Image src={hero} alt={tr?.title||"Program"} fill priority sizes="(max-width: 896px) 100vw, 896px" className="object-cover opacity-80"/>:<div className="h-full bg-gradient-to-br from-lagoon-800 to-lagoon-950"/>}<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/25"/>
       <a href={`/${locale}/account`} className="absolute left-5 top-5 grid h-12 w-12 place-items-center rounded-full bg-white text-2xl text-lagoon-950 shadow">←</a><a href="mailto:support@travendiq.com" className="absolute right-5 top-5 grid h-12 w-12 place-items-center rounded-full bg-white text-xl font-bold text-lagoon-950 shadow">?</a>
       <div className="absolute bottom-7 left-6 right-6 text-white"><p className="text-sm font-semibold uppercase tracking-wider opacity-90">{completed?"A program befejeződött":"Közelgő program"}</p><h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">{tr?.title||t.booking.title}</h1></div>
     </section>

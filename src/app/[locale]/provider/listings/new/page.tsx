@@ -9,10 +9,14 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80);
 }
 
-export default async function NewListingPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
+export default async function NewListingPage(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
@@ -52,7 +56,7 @@ export default async function NewListingPage({ params, searchParams }: { params:
 
   async function createListing(formData: FormData) {
     "use server";
-    const sb = createClient();
+    const sb = await createClient();
     const { data: { user: actionUser } } = await sb.auth.getUser();
     if (!actionUser) redirect(`/${locale}/auth/login`);
     const title = String(formData.get("title_en") ?? "");

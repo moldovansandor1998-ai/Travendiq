@@ -6,12 +6,11 @@ import { maskContactInfo, containsContactInfo } from "@/lib/masking";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConversationPage({
-  params,
-}: { params: { locale: Locale; id: string } }) {
+export default async function ConversationPage(props: { params: Promise<{ locale: Locale; id: string }> }) {
+  const params = await props.params;
   const { locale, id } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
@@ -28,7 +27,7 @@ export default async function ConversationPage({
 
   async function send(formData: FormData) {
     "use server";
-    const sb = createClient();
+    const sb = await createClient();
     const { data: { user: u } } = await sb.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const parsed = messageSchema.safeParse({

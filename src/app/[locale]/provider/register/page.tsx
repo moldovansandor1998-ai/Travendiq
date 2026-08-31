@@ -3,10 +3,14 @@ import { redirect } from "next/navigation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
-export default async function ProviderRegisterPage({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string } }) {
+export default async function ProviderRegisterPage(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
 
   if (user) {
@@ -16,7 +20,7 @@ export default async function ProviderRegisterPage({ params, searchParams }: { p
 
   async function register(formData: FormData) {
     "use server";
-    const sb = createClient();
+    const sb = await createClient();
     const { data: { user: u } } = await sb.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
 

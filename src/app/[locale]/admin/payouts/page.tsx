@@ -5,7 +5,8 @@ import { getDictionary, type Locale } from "@/lib/i18n";
 import { PayoutActions } from "./PayoutActions";
 import { ReversalResolveForm } from "./ReversalResolveForm";
 
-export default async function AdminPayouts({ params }: { params: { locale: Locale } }) {
+export default async function AdminPayouts(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const { svc } = await requireAdmin(locale);
   const t = await getDictionary(locale);

@@ -4,7 +4,8 @@ import { requireAdmin, audit } from "@/lib/admin";
 import { formatMoney } from "@/lib/utils";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminAffiliates({ params }: { params: { locale: Locale } }) {
+export default async function AdminAffiliates(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

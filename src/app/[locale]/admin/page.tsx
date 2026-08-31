@@ -5,10 +5,11 @@ import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/utils";
 
-export default async function AdminDashboard({ params }: { params: { locale: Locale } }) {
+export default async function AdminDashboard(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

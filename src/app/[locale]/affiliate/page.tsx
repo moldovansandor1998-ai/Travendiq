@@ -5,11 +5,12 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { formatMoney } from "@/lib/utils";
 
-export default async function AffiliatePage({ params }: { params: { locale: Locale } }) {
+export default async function AffiliatePage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const af = t.affiliate as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 
@@ -31,7 +32,7 @@ export default async function AffiliatePage({ params }: { params: { locale: Loca
 
   async function register(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const payoutEmail = String(formData.get("payout_email") ?? "").trim();

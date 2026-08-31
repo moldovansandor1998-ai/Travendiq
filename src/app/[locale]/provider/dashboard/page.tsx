@@ -7,11 +7,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatMoney } from "@/lib/utils";
 import type { BookingStatus } from "@/lib/booking/status";
 
-export default async function ProviderDashboard({ params }: { params: { locale: Locale } }) {
+export default async function ProviderDashboard(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const pd = t.providerDash as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

@@ -7,11 +7,15 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 const AGREEMENT_VERSION = "2026-08-30-v1";
 
-export default async function ProviderDocuments({ params, searchParams }: { params: { locale: Locale }; searchParams: { error?: string; uploaded?: string; saved?: string } }) {
+export default async function ProviderDocuments(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string; uploaded?: string; saved?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const pdoc = t.providerDocuments as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers").select("id, status, review_note").eq("owner_id", user.id).maybeSingle();
@@ -52,7 +56,7 @@ export default async function ProviderDocuments({ params, searchParams }: { para
 
   async function saveVerification(formData: FormData) {
     "use server";
-    const session = createClient();
+    const session = await createClient();
     const { data: { user: u } } = await session.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const service = createServiceClient();

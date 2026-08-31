@@ -28,7 +28,11 @@ const CATEGORY_ICONS: Record<string, string> = {
   wellness: "wellness", nightlife: "nightlife", transport: "map-pin",
 };
 
-export default async function HomePage({ params, searchParams }: { params: { locale: Locale }; searchParams: { subscribed?: string } }) {
+export default async function HomePage(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ subscribed?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const [cities, categories, featured, topRated] = await Promise.all([

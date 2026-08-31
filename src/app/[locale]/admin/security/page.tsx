@@ -3,7 +3,8 @@ import { requireAdmin } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n";
 import { MfaEnroll } from "./MfaEnroll";
 
-export default async function AdminSecurity({ params }: { params: { locale: Locale } }) {
+export default async function AdminSecurity(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { sb } = await requireAdmin(locale);

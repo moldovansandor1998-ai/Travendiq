@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AdminListingsPage({ params }: { params: { locale: Locale } }) {
-  const { locale } = params; const t = getDictionary(locale); const sb = createClient();
+export default async function AdminListingsPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
+  const { locale } = params;const t = getDictionary(locale);const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: isAdmin } = await sb.rpc("is_admin");
@@ -29,7 +31,7 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
 
   async function review(formData: FormData) {
     "use server";
-    const actionClient = createClient(); const { data: { user: actor } } = await actionClient.auth.getUser();
+    const actionClient = await createClient(); const { data: { user: actor } } = await actionClient.auth.getUser();
     if (!actor) redirect(`/${locale}/auth/login`);
     const { data: actorIsAdmin } = await actionClient.rpc("is_admin");
     if (!actorIsAdmin) redirect(`/${locale}`);
@@ -157,7 +159,7 @@ export default async function AdminListingsPage({ params }: { params: { locale: 
             </summary>
             <div className="border-t border-lagoon-100">
             <div className="grid sm:grid-cols-[150px_1fr]">
-              <div className="bg-sand-100">{media[0]?.kind === "image" ? <img src={media[0].url} alt="" className="h-full min-h-32 w-full object-cover" /> : <div className="grid h-32 place-items-center text-sm text-lagoon-500">Nincs kép</div>}</div>
+              <div className="relative min-h-32 bg-sand-100">{media[0]?.kind === "image" ? <Image src={media[0].url} alt={tr?.title ?? listing.slug} fill sizes="(max-width: 640px) 100vw, 150px" className="object-cover" /> : <div className="grid h-32 place-items-center text-sm text-lagoon-500">Nincs kép</div>}</div>
               <div className="p-5"><div className="flex flex-wrap items-start justify-between gap-3">
                 <div><StatusBadge status={listing.status} /><h3 className="mt-2 text-lg font-bold text-lagoon-950">{tr?.title ?? listing.slug}</h3>
                   <p className="text-sm text-lagoon-600">{provider?.display_name || provider?.legal_name || "Ismeretlen szolgáltató"} · {(listing.base_price_adult / 100).toFixed(2)} {listing.currency}</p></div>

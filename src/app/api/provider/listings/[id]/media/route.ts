@@ -4,8 +4,9 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPTED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm"]);
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const auth = createClient();
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+  const auth = await createClient();
   const { data: { user } } = await auth.auth.getUser();
   if (!user) return NextResponse.json({ error: "Bejelentkezés szükséges." }, { status: 401 });
   const { data: provider } = await auth.from("providers").select("id").eq("owner_id", user.id).maybeSingle();

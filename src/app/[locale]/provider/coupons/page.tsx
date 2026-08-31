@@ -5,11 +5,12 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { couponSchema } from "@/lib/validation";
 import { getDictionary, type Locale } from "@/lib/i18n";
 
-export default async function ProviderCoupons({ params }: { params: { locale: Locale } }) {
+export default async function ProviderCoupons(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   const pc = t.providerCoupons as Record<string, string>;
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers").select("id").eq("owner_id", user.id).maybeSingle();
@@ -21,7 +22,7 @@ export default async function ProviderCoupons({ params }: { params: { locale: Lo
 
   async function addCoupon(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const { data: prov } = await sb2.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
@@ -58,7 +59,7 @@ export default async function ProviderCoupons({ params }: { params: { locale: Lo
 
   async function toggle(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user: u } } = await sb2.auth.getUser();
     if (!u) redirect(`/${locale}/auth/login`);
     const { data: prov } = await sb2.from("providers").select("id").eq("owner_id", u.id).maybeSingle();

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const locale = parsed.success && parsed.data?.locale && isLocale(parsed.data.locale)
     ? parsed.data.locale : "en";
 
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 

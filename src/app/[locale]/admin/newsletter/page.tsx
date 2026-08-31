@@ -5,10 +5,14 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, audit } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminNewsletter({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { q?: string; status?: string };
-}) {
+export default async function AdminNewsletter(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ q?: string; status?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

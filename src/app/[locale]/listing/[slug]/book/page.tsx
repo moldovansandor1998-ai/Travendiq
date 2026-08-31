@@ -6,16 +6,18 @@ import { MARKETPLACE_LIVE } from "@/lib/launch";
 
 export const dynamic = "force-dynamic";
 
-export default async function BookPage({
-  params, searchParams,
-}: {
-  params: { locale: Locale; slug: string };
-  searchParams: { date?: string; time?: string; adults?: string; children?: string; infants?: string; option?: string; error?: string };
-}) {
+export default async function BookPage(
+  props: {
+    params: Promise<{ locale: Locale; slug: string }>;
+    searchParams: Promise<{ date?: string; time?: string; adults?: string; children?: string; infants?: string; option?: string; error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   if (!MARKETPLACE_LIVE) notFound();
   const { locale, slug } = params;
   const t = getDictionary(locale);
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: l } = await supabase
     .from("listings")

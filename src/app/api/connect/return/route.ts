@@ -12,7 +12,7 @@ import { isLocale, defaultLocale } from "@/lib/i18n";
  * - refresh=1 esetén új onboarding link készül és visszairányít a Stripe-hoz.
  */
 export async function GET(req: NextRequest) {
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   const sb = createServiceClient();
 

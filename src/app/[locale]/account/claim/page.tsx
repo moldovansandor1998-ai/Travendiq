@@ -7,7 +7,8 @@ import { ClaimForm } from "./ClaimForm";
  * a fiók létrejötte után a user az email alapján átveheti a vendégfoglalásait
  * (a /api/account/claim végpontra mutató linkkel).
  */
-export default function ClaimPage({ params }: { params: { locale: Locale } }) {
+export default async function ClaimPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
   return (

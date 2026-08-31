@@ -13,9 +13,13 @@ const labels: Record<string, [string, string]> = {
   bank_statement: ["Bankszámla-igazolás", "Bank account statement"],
 };
 
-export default async function AdminProvidersPage({ params, searchParams }: {
-  params: { locale: Locale }; searchParams: { error?: string };
-}) {
+export default async function AdminProvidersPage(
+  props: {
+    params: Promise<{ locale: Locale }>; searchParams: Promise<{ error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const t = getDictionary(locale);

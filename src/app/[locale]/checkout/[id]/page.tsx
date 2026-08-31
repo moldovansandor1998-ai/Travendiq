@@ -8,9 +8,11 @@ import { DevSimulateButton } from "@/components/checkout/DevSimulateButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function CheckoutPage({
-  params, searchParams,
-}: { params: { locale: Locale; id: string }; searchParams: { token?: string } }) {
+export default async function CheckoutPage(
+  props: { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ token?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale, id } = params;
   const t = getDictionary(locale);
 

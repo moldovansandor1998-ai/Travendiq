@@ -9,15 +9,17 @@ import { CalendarManager } from "./CalendarManager";
 
 type Tab = "basics" | "options" | "media" | "calendar" | "review";
 
-export default async function ListingEditorPage({
-  params, searchParams,
-}: { params: { locale: Locale; id: string }; searchParams: { tab?: string; error?: string; submitted?: string } }) {
+export default async function ListingEditorPage(
+  props: { params: Promise<{ locale: Locale; id: string }>; searchParams: Promise<{ tab?: string; error?: string; submitted?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale, id } = params;
   const t = getDictionary(locale);
   const tab = (["basics", "options", "media", "calendar", "review"].includes(searchParams.tab ?? "")
     ? searchParams.tab : "basics") as Tab;
 
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
   const { data: provider } = await sb.from("providers").select("id, status")
@@ -76,7 +78,7 @@ export default async function ListingEditorPage({
     if (!parsed.success) redirect(`/${locale}/provider/listings/${id}?tab=basics&error=validation`);
     const v = parsed.data;
     const city = (cities ?? []).find((c) => c.id === v.cityId);
-    const sb2 = createClient();
+    const sb2 = await createClient();
     await sb2.from("listings").update({
       category_id: v.categoryId, city_id: v.cityId, country_code: city?.country_code ?? l!.country_code,
       base_price_adult: Math.round(v.priceAdult * 100),
@@ -108,7 +110,7 @@ export default async function ListingEditorPage({
 
   async function duplicate() {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: copy } = await sb2.from("listings").insert({
       provider_id: provider!.id, category_id: l!.category_id, city_id: l!.city_id,
       country_code: l!.country_code, slug: `${l!.slug}-copy-${Math.random().toString(36).slice(2, 6)}`,
@@ -132,7 +134,7 @@ export default async function ListingEditorPage({
 
   async function addOption(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const code = String(formData.get("code") ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
     if (!code) return;
     const { data: opt } = await sb2.from("listing_options").insert({
@@ -151,7 +153,7 @@ export default async function ListingEditorPage({
 
   async function deleteRow(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const kind = String(formData.get("kind"));
     const rowId = String(formData.get("row_id"));
     const tables: Record<string, string> = {
@@ -165,7 +167,7 @@ export default async function ListingEditorPage({
 
   async function addExtra(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     await sb2.from("listing_extras").insert({
       listing_id: id, name: String(formData.get("name") ?? ""),
       price: Math.round(Number(formData.get("price") ?? 0) * 100),
@@ -176,7 +178,7 @@ export default async function ListingEditorPage({
 
   async function addZone(formData: FormData) {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     await sb2.from("listing_transfer_zones").insert({
       listing_id: id, zone_name: String(formData.get("zone_name") ?? ""),
       pickup_from: String(formData.get("pickup_from") ?? ""),
@@ -189,7 +191,7 @@ export default async function ListingEditorPage({
 
   async function submitForReview() {
     "use server";
-    const auth = createClient();
+    const auth = await createClient();
     const { data: { user: actionUser } } = await auth.auth.getUser();
     if (!actionUser) redirect(`/${locale}/auth/login`);
     const { data: owned } = await auth.from("listings").select("id").eq("id", id).eq("provider_id", provider!.id).maybeSingle();

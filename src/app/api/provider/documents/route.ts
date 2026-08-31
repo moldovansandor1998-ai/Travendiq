@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const locale = req.headers.get("referer")?.includes("/en/") ? "en" : "hu";
   const fail = () => NextResponse.redirect(new URL(`/${locale}/provider/documents?error=upload`, req.url), 303);
   if (req.headers.get("sec-fetch-site") === "cross-site") return fail();
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) return NextResponse.redirect(new URL(`/${locale}/auth/login`, req.url), 303);
   const form = await req.formData().catch(() => null);

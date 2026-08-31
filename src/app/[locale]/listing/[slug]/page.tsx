@@ -12,7 +12,7 @@ import { ListingActions } from "@/components/listing/ListingActions";
 import { MARKETPLACE_LIVE } from "@/lib/launch";
 
 async function getListing(slug: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.from("listings").select(`
     *, city:cities(name, slug, lat, lng), category:categories(slug), provider:providers(display_name, status, owner_id),
     translations:listing_translations(*), media:listing_media(kind, url, alt, sort_order),
@@ -24,7 +24,7 @@ async function getListing(slug: string) {
 }
 
 async function getSlots(listingId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
   const until = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
   const { data } = await supabase.from("availability")
@@ -35,7 +35,8 @@ async function getSlots(listingId: string) {
     remaining: s.capacity - s.booked_count, priceAdult: s.price_adult, priceChild: s.price_child }));
 }
 
-export async function generateMetadata({ params }: { params: { locale: Locale; slug: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ locale: Locale; slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   if (!MARKETPLACE_LIVE) return { title: "Travendiq" };
   const l = await getListing(params.slug);
   if (!l) return {};
@@ -59,14 +60,17 @@ const en = { favorite: "Save", share: "Share", benefits: "Experience highlights"
   noReviews: "There are no reviews for this experience yet.", recommended: "You might also like…", from: "From",
   availability: "Check availability", provider: "Activity provider", important: "Important information", verified: "Verified booking" };
 
-export default async function ListingPage({ params }: { params: { locale: Locale; slug: string }; searchParams: { date?: string } }) {
+export default async function ListingPage(
+  props: { params: Promise<{ locale: Locale; slug: string }>; searchParams: Promise<{ date?: string }> }
+) {
+  const params = await props.params;
   const { locale, slug } = params;
   const t = getDictionary(locale);
   const c = locale === "hu" ? hu : en;
   const l = await getListing(slug);
   if (!l) notFound();
   if (!MARKETPLACE_LIVE) {
-    const auth = createClient();
+    const auth = await createClient();
     const { data: { user } } = await auth.auth.getUser();
     const { data: isAdmin } = user ? await auth.rpc("is_admin") : { data: false };
     const ownerId = (l.provider as { owner_id?: string } | null)?.owner_id;

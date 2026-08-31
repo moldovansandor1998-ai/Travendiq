@@ -2,10 +2,14 @@ export const dynamic = "force-dynamic";
 import { requireAdmin } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminLogs({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { tab?: string };
-}) {
+export default async function AdminLogs(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ tab?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

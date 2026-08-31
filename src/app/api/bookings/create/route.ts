@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
   const v = parsed.data;
 
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
 
   // affiliate: KIZÁRÓLAG a /r/[code] által beállított, HMAC-ALÁÍRT szerveroldali

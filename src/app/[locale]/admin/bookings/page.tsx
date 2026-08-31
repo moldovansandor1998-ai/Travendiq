@@ -7,10 +7,14 @@ import { requestRefund } from "@/lib/booking/refund-flow";
 import type { Locale } from "@/lib/i18n";
 import type { BookingStatus } from "@/lib/booking/status";
 
-export default async function AdminBookings({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { status?: string; q?: string };
-}) {
+export default async function AdminBookings(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ status?: string; q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

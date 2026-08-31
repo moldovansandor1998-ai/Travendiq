@@ -25,7 +25,8 @@ interface PreparedBooking {
  * módosult foglaláshoz nem jön létre PaymentIntent. A payments sor idempotencia-
  * kulcsa (pay_<bookingId>) + a booking-scoped unique index a dupla fizetés ellen véd.
  */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const sb = createServiceClient();
   const ip = clientIp(req);
   const limit = Number(process.env.RATE_LIMIT_BOOKING_PER_MINUTE ?? 5);

@@ -15,7 +15,7 @@ export async function getBookingWithAccess(
   selector: { id?: string; code?: string },
   guestToken?: string | null
 ): Promise<BookingAccess> {
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
 
   const service = createServiceClient();
@@ -44,7 +44,7 @@ export async function getBookingWithAccess(
 
 /** Szerepkör-lekérdezés a bejelentkezett felhasználóhoz. */
 export async function getRoles(): Promise<{ user: { id: string; email?: string } | null; roles: string[] }> {
-  const session = createClient();
+  const session = await createClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) return { user: null, roles: [] };
   const { data } = await session.from("user_roles").select("role").eq("user_id", user.id);

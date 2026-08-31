@@ -15,7 +15,7 @@ function fmtDate(d: Date): string {
 export async function CalendarManager({ listingId, locale, labels }: {
   listingId: string; locale: string; labels: Labels;
 }) {
-  const sb = createClient();
+  const sb = await createClient();
   const today = fmtDate(new Date());
   const until = fmtDate(new Date(Date.now() + 60 * 86400000));
 
@@ -32,7 +32,7 @@ export async function CalendarManager({ listingId, locale, labels }: {
 
   async function guardOwner() {
     "use server";
-    const sb2 = createClient();
+    const sb2 = await createClient();
     const { data: { user } } = await sb2.auth.getUser();
     if (!user) redirect(`/${locale}/auth/login`);
     const { data: l } = await sb2.from("listings").select("provider_id").eq("id", listingId).single();

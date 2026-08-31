@@ -3,7 +3,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, audit } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n";
 
-export default async function AdminReviews({ params }: { params: { locale: Locale } }) {
+export default async function AdminReviews(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { svc } = await requireAdmin(locale);

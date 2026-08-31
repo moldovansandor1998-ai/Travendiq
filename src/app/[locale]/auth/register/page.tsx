@@ -1,7 +1,8 @@
 import { getDictionary, type Locale } from "@/lib/i18n";
 import { RegisterForm } from "./RegisterForm";
 
-export default function RegisterPage({ params }: { params: { locale: Locale } }) {
+export default async function RegisterPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const t = getDictionary(params.locale);
   const hu = params.locale === "hu";
   return <RegisterForm locale={params.locale} labels={{

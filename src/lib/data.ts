@@ -32,7 +32,7 @@ export interface ListingFilters {
 /** Listing + fordítás lekérése locale-fallback-kel, teljes szűrőkészlettel. */
 export async function queryListings(opts: ListingFilters): Promise<ListingCardData[]> {
   if (!MARKETPLACE_LIVE) return [];
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const needsAvailability = Boolean(opts.date);
   const select = `
@@ -141,7 +141,7 @@ export async function queryListings(opts: ListingFilters): Promise<ListingCardDa
 }
 
 export async function getPopularCities() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("cities")
     .select("slug, name, country_code")
@@ -152,7 +152,7 @@ export async function getPopularCities() {
 }
 
 export async function getCategories(locale: Locale) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("categories")
     .select("id, slug, icon, translations:category_translations(locale, name)")

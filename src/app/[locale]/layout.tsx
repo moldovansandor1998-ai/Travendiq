@@ -13,13 +13,18 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export default function LocaleLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: { locale: string };
-}) {
+export default async function LocaleLayout(
+  props: {
+    children: ReactNode;
+    params: Promise<{ locale: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   if (!isLocale(params.locale)) notFound();
   const locale = params.locale as Locale;
   const t = getDictionary(locale);

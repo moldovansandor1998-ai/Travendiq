@@ -5,10 +5,11 @@ import { ListingCard, type ListingCardData } from "@/components/ListingCard";
 
 export const dynamic = "force-dynamic";
 
-export default async function FavoritesPage({ params }: { params: { locale: Locale } }) {
+export default async function FavoritesPage(props: { params: Promise<{ locale: Locale }> }) {
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

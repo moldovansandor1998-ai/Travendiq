@@ -7,10 +7,9 @@ import type { Locale } from "@/lib/i18n";
  * jelenhet meg – tervezet/helykitöltő szöveg technikailag nem kerülhet ki
  * az éles felületre (404).
  */
-export default async function LegalPage({
-  params,
-}: { params: { locale: Locale; slug: string } }) {
-  const supabase = createClient();
+export default async function LegalPage(props: { params: Promise<{ locale: Locale; slug: string }> }) {
+  const params = await props.params;
+  const supabase = await createClient();
   const { data: page } = await supabase
     .from("pages")
     .select("title, body_md, updated_at")

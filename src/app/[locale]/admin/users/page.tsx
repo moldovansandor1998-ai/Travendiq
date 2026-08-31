@@ -5,10 +5,14 @@ import type { Locale } from "@/lib/i18n";
 
 const ROLES = ["customer", "provider", "provider_staff", "promoter", "support", "admin"] as const;
 
-export default async function AdminUsers({ params, searchParams }: {
-  params: { locale: Locale };
-  searchParams: { q?: string };
-}) {
+export default async function AdminUsers(
+  props: {
+    params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ q?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const hu = locale === "hu";
   const { user, svc } = await requireAdmin(locale);

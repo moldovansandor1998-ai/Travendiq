@@ -8,12 +8,14 @@ import { formatMoney } from "@/lib/utils";
 import type { BookingStatus } from "@/lib/booking/status";
 import { BookingRowActions } from "./BookingRowActions";
 
-export default async function ProviderBookingsPage({
-  params, searchParams,
-}: { params: { locale: Locale }; searchParams: { date?: string; status?: string } }) {
+export default async function ProviderBookingsPage(
+  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ date?: string; status?: string }> }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const { locale } = params;
   const t = getDictionary(locale);
-  const sb = createClient();
+  const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect(`/${locale}/auth/login`);
 

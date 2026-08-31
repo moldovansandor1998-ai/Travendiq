@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  const sb = createClient();
+  const sb = await createClient();
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
     console.warn("[auth/login] password sign-in rejected:", error.message);

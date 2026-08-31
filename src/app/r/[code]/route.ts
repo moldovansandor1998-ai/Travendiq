@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
  * Locale: a refererben szereplő vagy a böngésző által kért TÁMOGATOTT locale,
  * sosem a kliens által szabadon megadott érték; nem mindig "/en".
  */
-export async function GET(req: Request, { params }: { params: { code: string } }) {
+export async function GET(req: Request, props: { params: Promise<{ code: string }> }) {
+  const params = await props.params;
   const svc = createServiceClient();
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
 

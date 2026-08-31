@@ -26,7 +26,6 @@ export function Scanner({ locale, labels }: {
   useEffect(() => {
     setPending(JSON.parse(localStorage.getItem("checkin_pending") ?? "[]").length);
     return () => stopCamera();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function startCamera() {
