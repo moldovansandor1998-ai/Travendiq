@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Icon } from "./Icon";
 import type { Locale } from "@/lib/i18n";
 
@@ -18,11 +18,12 @@ const LOCALES: { code: Locale; label: string }[] = [
   { code: "ar", label: "العربية" },
 ];
 
-/** Nyelvválasztó legördülő – megtartja az aktuális útvonalat. */
+/** Nyelvválasztó legördülő – megtartja az aktuális útvonalat és query paramétereket. */
 export function LocaleMenu({ locale, label }: { locale: Locale; label: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname() ?? `/${locale}`;
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -38,6 +39,8 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
   }, []);
 
   const rest = pathname.replace(/^\/[a-z]{2}(?=\/|$)/, "") || "";
+  const query = searchParams.toString();
+  const localeHref = (code: Locale) => `/${code}${rest}${query ? `?${query}` : ""}`;
 
   return (
     <div ref={ref} className="relative">
@@ -60,8 +63,11 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
         >
           {LOCALES.map((l) => (
             <li key={l.code}>
-              <Link
-                href={`/${l.code}${rest}`}
+              <a
+                href={localeHref(l.code)}
+                hrefLang={l.code}
+                lang={l.code}
+                dir={l.code === "ar" ? "rtl" : "ltr"}
                 role="option"
                 aria-selected={l.code === locale}
                 onClick={() => setOpen(false)}
@@ -71,7 +77,7 @@ export function LocaleMenu({ locale, label }: { locale: Locale; label: string })
               >
                 {l.label}
                 {l.code === locale && <Icon name="check" size={15} />}
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
