@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { getDictionary, isLocale, rtlLocales, defaultLocale, type Locale } from "@/lib/i18n";
+import { getDictionary, isLocale, isRtl, locales, type Locale } from "@/lib/i18n";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { notFound } from "next/navigation";
@@ -20,15 +20,12 @@ export default async function LocaleLayout(
   }
 ) {
   const params = await props.params;
-
-  const {
-    children
-  } = props;
+  const { children } = props;
 
   if (!isLocale(params.locale)) notFound();
   const locale = params.locale as Locale;
   const t = getDictionary(locale);
-  const dir = rtlLocales.includes(locale) ? "rtl" : "ltr";
+  const dir = isRtl(locale) ? "rtl" : "ltr";
 
   return (
     <html lang={locale} dir={dir}>
@@ -50,5 +47,5 @@ export default async function LocaleLayout(
 }
 
 export function generateStaticParams() {
-  return [{ locale: defaultLocale }, { locale: "hu" }, { locale: "de" }];
+  return locales.map((locale) => ({ locale }));
 }
