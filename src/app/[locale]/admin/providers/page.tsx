@@ -21,14 +21,15 @@ export default async function AdminProvidersPage({ params, searchParams }: {
   const t = getDictionary(locale);
   const { svc } = await requireAdmin(locale);
   const { data: providers } = await svc.from("providers")
-    .select("id,legal_name,display_name,country_code,city,status,review_note,contact_email,contact_name,contact_phone,tax_id")
-    .in("status", ["under_review", "docs_required", "incomplete", "rejected"]).order("created_at");
+    .select("id,legal_name,display_name,is_company,country_code,city,address,status,review_note,contact_email,contact_name,contact_phone,tax_id,payout_currency,stripe_onboarding_complete,commission_override,service_areas,languages,created_at,reviewed_at")
+    .order("created_at", { ascending: false });
   const ids = (providers ?? []).map((p) => p.id);
-  const [{ data: docs }, { data: payouts }, { data: agreements }] = ids.length ? await Promise.all([
+  const [{ data: docs }, { data: payoutAccounts }, { data: agreements }, { data: payoutHistory }] = ids.length ? await Promise.all([
     svc.from("provider_documents").select("id,provider_id,kind,file_path,status,note,created_at").in("provider_id", ids).order("created_at", { ascending: false }),
     svc.from("provider_payout_accounts").select("provider_id,account_holder_name,bank_name,iban,swift_bic,currency,bank_country_code").in("provider_id", ids),
     svc.from("provider_agreements").select("provider_id,agreement_version,accepted_name,accepted_at").in("provider_id", ids).eq("agreement_key", "provider-terms"),
-  ]) : [{ data: [] }, { data: [] }, { data: [] }];
+    svc.from("payouts").select("id,provider_id,amount,currency,status,scheduled_for,hold_reason,provider_payout_id,paid_at,created_at").in("provider_id", ids).order("created_at", { ascending: false }),
+  ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const signed = new Map<string, string>();
   await Promise.all((docs ?? []).map(async (d) => {
@@ -92,21 +93,31 @@ export default async function AdminProvidersPage({ params, searchParams }: {
   }
 
   return <div className="container-page py-10">
-    <h1 className="text-2xl font-bold text-lagoon-950">{t.admin.pendingProviders}</h1>
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 className="text-2xl font-bold text-lagoon-950">{hu ? "Szolgáltatók" : "Providers"}</h1>
+        <p className="mt-1 text-sm text-lagoon-600">{hu ? "Teljes szolgáltatói lista. A teendőt igénylő fiókok automatikusan előre kerülnek." : "Complete provider list. Accounts requiring action are shown first."}</p>
+      </div>
+      <span className="badge bg-lagoon-100 text-lagoon-800">{providers?.length ?? 0} {hu ? "szolgáltató" : "providers"}</span>
+    </div>
     {searchParams.error === "documents" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{hu ? "Jóváhagyás előtt mindhárom dokumentumot ellenőrizni kell, továbbá szükséges a bankszámla és a szerződés elfogadása." : "Verify all three documents and confirm payout details and agreement before approval."}</p>}
     {searchParams.error === "email" && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{hu ? "Az állapot elmentve, de az értesítő email küldése nem sikerült." : "Status saved, but the notification email could not be sent."}</p>}
     <div className="mt-6 space-y-6">
       {(providers ?? []).map((p) => {
         const providerDocs = (docs ?? []).filter((d) => d.provider_id === p.id);
-        const payout = (payouts ?? []).find((row) => row.provider_id === p.id);
+        const payout = (payoutAccounts ?? []).find((row) => row.provider_id === p.id);
         const agreement = (agreements ?? []).find((row) => row.provider_id === p.id);
         const documentIssues = REQUIRED.filter((kind) => providerDocs.find((d) => d.kind === kind)?.status !== "verified").length;
-        const issueCount = documentIssues + (payout ? 0 : 1) + (agreement ? 0 : 1);
+        const statusIssue = p.status === "approved" ? 0 : 1;
+        const issueCount = documentIssues + (payout ? 0 : 1) + (agreement ? 0 : 1) + statusIssue;
+        return { p, providerDocs, payout, agreement, issueCount };
+      }).sort((a, b) => b.issueCount - a.issueCount || a.p.display_name.localeCompare(b.p.display_name, locale)).map(({ p, providerDocs, payout, agreement, issueCount }) => {
+        const providerPayouts = (payoutHistory ?? []).filter((row) => row.provider_id === p.id);
         return <details key={p.id} className="group card overflow-hidden">
           <summary className="flex cursor-pointer list-none items-center gap-3 p-4 hover:bg-lagoon-50 sm:px-5">
             <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-lg font-black ${issueCount ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-700"}`}>{issueCount ? "!" : "✓"}</span>
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold text-lagoon-950">{p.display_name}</h2><span className="hidden truncate text-sm text-lagoon-500 sm:inline">{p.legal_name}</span></div>
+              <div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-bold text-lagoon-950">{p.display_name}</h2><span className="hidden truncate text-sm text-lagoon-500 sm:inline">{p.legal_name}</span><span className={`badge ${p.status === "approved" ? "bg-emerald-100 text-emerald-800" : p.status === "rejected" ? "bg-red-100 text-red-800" : "bg-slate-100 text-slate-700"}`}>{p.status}</span></div>
               <p className="truncate text-xs text-lagoon-600">{p.country_code} · {p.city} · {p.contact_email}</p>
             </div>
             <span className={`badge shrink-0 ${issueCount ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-800"}`}>{issueCount ? (hu ? `${issueCount} teendő` : `${issueCount} actions`) : (hu ? "Nincs teendő" : "No action")}</span>
@@ -114,10 +125,8 @@ export default async function AdminProvidersPage({ params, searchParams }: {
           </summary>
           <div className="border-t border-lagoon-100">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-lagoon-100 p-5">
-            <div>
+            <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold text-lagoon-950">{p.display_name} <span className="font-normal text-lagoon-500">({p.legal_name})</span></h2>
-              <p className="mt-1 text-sm text-lagoon-700">{p.country_code} · {p.city} · {p.contact_email} · {p.contact_phone}</p>
-              <p className="mt-1 text-xs text-lagoon-500">{hu ? "Kapcsolattartó" : "Contact"}: {p.contact_name} · {hu ? "Adószám" : "Tax ID"}: {p.tax_id} · {p.status}</p>
               {p.review_note && <p className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-800">{hu ? "Admin megjegyzés" : "Admin note"}: {p.review_note}</p>}
             </div>
             <div className="flex max-w-xl flex-wrap justify-end gap-2">
@@ -132,6 +141,39 @@ export default async function AdminProvidersPage({ params, searchParams }: {
               <button name="action" value="reject" className="btn-secondary px-4 py-2 text-red-700">{t.admin.reject}</button>
             </form>
             </div>
+          </div>
+          <div className="grid gap-4 border-b border-lagoon-100 p-5 md:grid-cols-2 xl:grid-cols-3">
+            <section className="rounded-xl bg-slate-50 p-4">
+              <h3 className="text-sm font-bold text-lagoon-950">{hu ? "Cégadatok" : "Company details"}</h3>
+              <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs text-lagoon-700">
+                <dt>{hu ? "Hivatalos név" : "Legal name"}</dt><dd className="text-right font-semibold">{p.legal_name || "–"}</dd>
+                <dt>{hu ? "Típus" : "Type"}</dt><dd className="text-right">{p.is_company ? (hu ? "Cég" : "Company") : (hu ? "Magánszemély" : "Individual")}</dd>
+                <dt>{hu ? "Adószám" : "Tax ID"}</dt><dd className="break-all text-right">{p.tax_id || "–"}</dd>
+                <dt>{hu ? "Ország, város" : "Country, city"}</dt><dd className="text-right">{p.country_code || "–"}, {p.city || "–"}</dd>
+                <dt>{hu ? "Cím" : "Address"}</dt><dd className="text-right">{p.address || "–"}</dd>
+                <dt>{hu ? "Regisztrált" : "Registered"}</dt><dd className="text-right">{new Date(p.created_at).toLocaleString(locale)}</dd>
+              </dl>
+            </section>
+            <section className="rounded-xl bg-slate-50 p-4">
+              <h3 className="text-sm font-bold text-lagoon-950">{hu ? "Kapcsolattartás" : "Contact"}</h3>
+              <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs text-lagoon-700">
+                <dt>{hu ? "Név" : "Name"}</dt><dd className="text-right font-semibold">{p.contact_name || "–"}</dd>
+                <dt>E-mail</dt><dd className="break-all text-right"><a className="underline" href={`mailto:${p.contact_email}`}>{p.contact_email || "–"}</a></dd>
+                <dt>{hu ? "Telefon" : "Phone"}</dt><dd className="text-right"><a className="underline" href={`tel:${p.contact_phone}`}>{p.contact_phone || "–"}</a></dd>
+                <dt>{hu ? "Nyelvek" : "Languages"}</dt><dd className="text-right">{p.languages?.join(", ") || "–"}</dd>
+                <dt>{hu ? "Szolgáltatási terület" : "Service areas"}</dt><dd className="text-right">{p.service_areas?.join(", ") || "–"}</dd>
+              </dl>
+            </section>
+            <section className="rounded-xl bg-slate-50 p-4">
+              <h3 className="text-sm font-bold text-lagoon-950">{hu ? "Fiók és pénzügy" : "Account and finance"}</h3>
+              <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs text-lagoon-700">
+                <dt>{hu ? "Állapot" : "Status"}</dt><dd className="text-right font-semibold">{p.status}</dd>
+                <dt>{hu ? "Kifizetési pénznem" : "Payout currency"}</dt><dd className="text-right">{p.payout_currency}</dd>
+                <dt>{hu ? "Egyedi jutalék" : "Custom commission"}</dt><dd className="text-right">{p.commission_override == null ? "–" : `${p.commission_override}%`}</dd>
+                <dt>Stripe Connect</dt><dd className="text-right">{p.stripe_onboarding_complete ? (hu ? "Kész" : "Complete") : (hu ? "Nincs kész" : "Incomplete")}</dd>
+                <dt>{hu ? "Ellenőrizve" : "Reviewed"}</dt><dd className="text-right">{p.reviewed_at ? new Date(p.reviewed_at).toLocaleString(locale) : "–"}</dd>
+              </dl>
+            </section>
           </div>
           <div className="grid gap-4 p-5 lg:grid-cols-3">
             {REQUIRED.map((kind) => {
@@ -156,6 +198,10 @@ export default async function AdminProvidersPage({ params, searchParams }: {
           <div className="grid gap-4 border-t border-lagoon-100 bg-lagoon-50/40 p-5 md:grid-cols-2">
             <div><h3 className="text-sm font-semibold text-lagoon-950">{hu ? "Kifizetési bankszámla" : "Payout bank account"}</h3>{payout ? <dl className="mt-2 grid grid-cols-2 gap-1 text-xs text-lagoon-700"><dt>{hu ? "Tulajdonos" : "Holder"}</dt><dd>{payout.account_holder_name}</dd><dt>Bank</dt><dd>{payout.bank_name}</dd><dt>IBAN</dt><dd className="break-all font-mono">{payout.iban}</dd><dt>SWIFT/BIC</dt><dd className="font-mono">{payout.swift_bic}</dd><dt>{hu ? "Pénznem" : "Currency"}</dt><dd>{payout.currency} · {payout.bank_country_code}</dd></dl> : <p className="mt-2 text-xs font-semibold text-amber-700">{hu ? "Még nincs elmentve." : "Not saved yet."}</p>}</div>
             <div><h3 className="text-sm font-semibold text-lagoon-950">{hu ? "Szolgáltatói szerződés" : "Provider agreement"}</h3>{agreement ? <p className="mt-2 text-xs text-lagoon-700">{agreement.accepted_name} · {agreement.agreement_version} · {new Date(agreement.accepted_at).toLocaleString(locale)}</p> : <p className="mt-2 text-xs font-semibold text-amber-700">{hu ? "Még nincs elfogadva." : "Not accepted yet."}</p>}</div>
+          </div>
+          <div className="border-t border-lagoon-100 p-5">
+            <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-lagoon-950">{hu ? "Kifizetési előzmények" : "Payout history"}</h3><span className="text-xs text-lagoon-500">{providerPayouts.length} {hu ? "tétel" : "items"}</span></div>
+            {providerPayouts.length ? <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-xs"><thead className="border-b border-lagoon-100 text-lagoon-500"><tr><th className="p-2">{hu ? "Létrehozva" : "Created"}</th><th className="p-2">{hu ? "Összeg" : "Amount"}</th><th className="p-2">{hu ? "Állapot" : "Status"}</th><th className="p-2">{hu ? "Ütemezve / kifizetve" : "Scheduled / paid"}</th><th className="p-2">{hu ? "Megjegyzés" : "Note"}</th></tr></thead><tbody>{providerPayouts.map((row) => <tr key={row.id} className="border-b border-lagoon-50"><td className="p-2">{new Date(row.created_at).toLocaleDateString(locale)}</td><td className="p-2 font-semibold">{new Intl.NumberFormat(locale, { style: "currency", currency: row.currency }).format(row.amount / 100)}</td><td className="p-2">{row.status}</td><td className="p-2">{row.paid_at ? new Date(row.paid_at).toLocaleString(locale) : row.scheduled_for || "–"}</td><td className="p-2">{row.hold_reason || row.provider_payout_id || "–"}</td></tr>)}</tbody></table></div> : <p className="mt-3 rounded-lg bg-slate-50 p-4 text-xs text-lagoon-500">{hu ? "Még nincs kifizetési előzmény." : "No payout history yet."}</p>}
           </div>
           </div>
         </details>;
