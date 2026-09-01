@@ -22,10 +22,7 @@ export default async function AdminUsers(
     .order("created_at", { ascending: false }).limit(100);
   if (searchParams.q) query = query.ilike("email", `%${searchParams.q}%`);
   const { data: users } = await query;
-  const customerUsers = (users ?? []).filter((profile) => {
-    const roles = ((profile.roles ?? []) as { role: string }[]).map((item) => item.role);
-    return !roles.includes("provider") && !roles.includes("provider_staff");
-  });
+  const accountUsers = users ?? [];
 
   async function toggleSuspend(formData: FormData) {
     "use server";
@@ -57,14 +54,14 @@ export default async function AdminUsers(
   return (
     <div className="container-page py-10">
       <h1 className="text-2xl font-bold text-lagoon-950">{hu ? "Felhasználók" : "Users"}</h1>
-      <p className="mt-1 text-sm text-lagoon-600">{hu ? "A vásárlói és belső felhasználói fiókok. A szolgáltatók külön, a Szolgáltatók menüpontban láthatók." : "Customer and internal accounts. Providers are listed separately under Providers."}</p>
+      <p className="mt-1 text-sm text-lagoon-600">{hu ? "Minden regisztrált felhasználói fiók. A szolgáltatói adatok külön, a Szolgáltatók menüpontban kezelhetők." : "All registered user accounts. Provider details are managed separately under Providers."}</p>
       <form className="mt-4 flex gap-2" method="get">
         <input name="q" defaultValue={searchParams.q ?? ""} placeholder="E-mail…" className="input max-w-xs" />
         <button className="btn-secondary" type="submit">{hu ? "Keresés" : "Search"}</button>
       </form>
 
       <div className="card mt-6 divide-y divide-lagoon-100">
-        {customerUsers.map((p) => {
+        {accountUsers.map((p) => {
           const roles = ((p.roles ?? []) as { role: string }[]).map((r) => r.role);
           return (
             <div key={p.id} className="p-4 text-sm">
@@ -103,7 +100,7 @@ export default async function AdminUsers(
             </div>
           );
         })}
-        {customerUsers.length === 0 && <p className="p-4 text-sm text-lagoon-500">–</p>}
+        {accountUsers.length === 0 && <p className="p-4 text-sm text-lagoon-500">–</p>}
       </div>
     </div>
   );
