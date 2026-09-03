@@ -5,12 +5,30 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { notFound } from "next/navigation";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://travendiq.com";
+
 export const metadata: Metadata = {
   title: { default: "Travendiq – Book experiences worldwide", template: "%s | Travendiq" },
   description: "Tours, tickets, events and activities worldwide – booked in minutes.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://travendiq.com"),
-  openGraph: { siteName: "Travendiq", type: "website" },
+  metadataBase: new URL(siteUrl),
+  alternates: { canonical: "/" },
+  openGraph: {
+    siteName: "Travendiq",
+    type: "website",
+    url: "/",
+    title: "Travendiq – Book experiences worldwide",
+    description: "Tours, tickets, events and activities worldwide – booked in minutes.",
+  },
   manifest: "/manifest.webmanifest",
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Travendiq",
+  url: siteUrl,
+  description: "Marketplace for tours, attractions, tickets, events and travel experiences worldwide.",
+  inLanguage: ["en", "hu", "de", "fr", "es", "it", "ro", "pl", "ar"],
 };
 
 export default async function LocaleLayout(
@@ -30,6 +48,7 @@ export default async function LocaleLayout(
   return (
     <html lang={locale} dir={dir}>
       <body className="flex min-h-screen flex-col">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-lagoon-700 focus:px-4 focus:py-2 focus:text-white"
