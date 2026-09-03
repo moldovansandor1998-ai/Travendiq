@@ -16,15 +16,11 @@ export async function POST(req: NextRequest) {
   const ipKey = `register:${clientIp(req)}`;
   const emailKey = `register-email:${email}`;
 
-  if (!(await rateLimit(svc, ipKey, 5, 300))) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  }
-
+  if (!(await rateLimit(svc, ipKey, 5, 300))) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   if (!EMAIL_RE.test(email) || name.length < 2 || password.length < 8 || password.length > 72) {
     await releaseRateLimit(svc, ipKey);
     return NextResponse.json({ error: "invalid_input" }, { status: 400 });
   }
-
   if (!(await rateLimit(svc, emailKey, 3, 900))) {
     await releaseRateLimit(svc, ipKey);
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
@@ -33,26 +29,21 @@ export async function POST(req: NextRequest) {
   const origin = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? new URL(req.url).origin;
   const next = `/${locale}/auth/confirmed`;
   const redirectTo = `${origin}/api/auth/confirm?next=${encodeURIComponent(next)}`;
-
   const { data, error } = await svc.auth.admin.generateLink({
     type: "signup",
     email,
     password,
-    options: {
-      redirectTo,
-      data: {
-        full_name: name,
-        locale,
-        registration_intent: "provider",
-      },
-    },
+    options: { redirectTo, data: { full_name: name, locale, registration_intent: "provider" } },
   });
 
   if (error || !data.properties?.hashed_token || !data.user?.id) {
     console.error("[auth/register] generateLink failed:", error?.message);
     await Promise.all([releaseRateLimit(svc, ipKey), releaseRateLimit(svc, emailKey)]);
     const message = (error?.message ?? "").toLowerCase();
-    if (message.includes("weak") || message.includes("password")) {
+    if (message.includes("known to be weak") || message.includes("easy to guess") || message.includes("compromised")) {
+      return NextResponse.json({ error: "compromised_password" }, { status: 400 });
+    }
+    if (message.includes("weak password") || message.includes("password should") || message.includes("password must")) {
       return NextResponse.json({ error: "weak_password" }, { status: 400 });
     }
     if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
@@ -62,13 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   const confirmUrl = `${origin}/api/auth/confirm?token_hash=${encodeURIComponent(data.properties.hashed_token)}&type=signup&next=${encodeURIComponent(next)}`;
-  const sent = await sendEmail({
-    to: email,
-    template: "email_confirmation",
-    locale,
-    vars: { name, link: confirmUrl },
-  });
-
+  const sent = await sendEmail({ to: email, template: "email_confirmation", locale, vars: { name, link: confirmUrl } });
   if (!sent.ok) {
     console.error("[auth/register] confirmation email failed", { email });
     const { error: deleteError } = await svc.auth.admin.deleteUser(data.user.id);
@@ -76,6 +61,5 @@ export async function POST(req: NextRequest) {
     await Promise.all([releaseRateLimit(svc, ipKey), releaseRateLimit(svc, emailKey)]);
     return NextResponse.json({ error: "send_failed" }, { status: 502 });
   }
-
   return NextResponse.json({ ok: true });
 }
