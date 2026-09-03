@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-type Labels = Record<"title" | "name" | "email" | "password" | "submit" | "sent" | "error" | "rateLimited" | "signIn" | "weakPassword" | "accountExists" | "passwordHelp", string>;
+type Labels = Record<"title" | "name" | "email" | "password" | "submit" | "sent" | "error" | "rateLimited" | "signIn" | "weakPassword" | "compromisedPassword" | "accountExists" | "passwordHelp", string>;
 
 export function RegisterForm({ locale, labels }: { locale: string; labels: Labels }) {
   const [sent, setSent] = useState(false);
@@ -23,19 +23,14 @@ export function RegisterForm({ locale, labels }: { locale: string; labels: Label
         body: JSON.stringify({ name: form.get("name"), email: form.get("email"), password: form.get("password"), locale }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok && data.ok === true) {
-        setSent(true);
-        return;
-      }
+      if (response.ok && data.ok === true) { setSent(true); return; }
       if (data.error === "rate_limited") setError(labels.rateLimited);
+      else if (data.error === "compromised_password") setError(labels.compromisedPassword);
       else if (data.error === "weak_password") setError(labels.weakPassword);
       else if (data.error === "account_exists") setError(labels.accountExists);
       else setError(labels.error);
-    } catch {
-      setError(labels.error);
-    } finally {
-      setBusy(false);
-    }
+    } catch { setError(labels.error); }
+    finally { setBusy(false); }
   }
 
   return (
