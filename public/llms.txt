@@ -1,0 +1,11 @@
+# Travendiq
+
+> Global marketplace for tours, attractions, tickets, events and travel experiences. Travendiq connects travelers with registered activity providers and supports multilingual discovery and booking.
+
+- Official website: https://travendiq.com/
+- English: https://travendiq.com/en
+- Hungarian: https://travendiq.com/hu
+- Provider registration: https://travendiq.com/en/auth/register
+- Coverage: worldwide travel activities and experiences
+
+Only index public marketplace and informational pages. Do not index admin, provider account, checkout, booking management or API routes.
