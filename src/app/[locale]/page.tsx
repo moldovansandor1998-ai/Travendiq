@@ -1,16 +1,15 @@
 export const revalidate = 300;
 import Link from "next/link";
 import { getDictionary, type Locale } from "@/lib/i18n";
+import { resolveLocale } from "@/lib/i18n/locales";
 import { SafeImage } from "@/components/SafeImage";
 
-export default async function HomePage(
-  props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ subscribed?: string }> }
-) {
+export default async function HomePage(props: { params: Promise<{ locale: Locale }>; searchParams: Promise<{ subscribed?: string }> }) {
   const searchParams = await props.searchParams;
-  const { locale } = await props.params;
+  const raw = await props.params;
+  const locale = resolveLocale(raw.locale);
   const t = getDictionary(locale);
-
-  const copy: Record<Locale, { badge:string; title:string; text:string; register:string; login:string; waitTitle:string; waitText:string; notify:string; success:string; failed:string }> = {
+  const copy: Partial<Record<Locale, { badge:string; title:string; text:string; register:string; login:string; waitTitle:string; waitText:string; notify:string; success:string; failed:string }>> = {
     en:{badge:"Provider onboarding period",title:"Add your activities before Travendiq launches",text:"During the first month we are onboarding registered activity providers. Create your company profile, submit your activities and get ready for launch.",register:"Register as a provider",login:"I already have an account",waitTitle:"Notify me when bookings open",waitText:"Traveler registration opens at launch. Leave your email and we will notify you first.",notify:"Notify me",success:"You are on the list. We will notify you at launch.",failed:"Subscription failed. Check the email address and try again."},
     hu:{badge:"Szolgáltatói feltöltési időszak",title:"Töltsd fel programjaidat a Travendiq indulása előtt",text:"Az első hónapban kizárólag bejegyzett szolgáltatókat fogadunk. Hozd létre céges profilodat, küldd be programjaidat, és készülj velünk az éles indulásra.",register:"Céges partnerként regisztrálok",login:"Már van partnerfiókom",waitTitle:"Utazóként értesítést kérek az indulásról",waitText:"A felhasználói regisztráció az éles induláskor nyílik meg. Add meg az emailed, és elsőként értesítünk.",notify:"Értesítést kérek",success:"Sikeresen feliratkoztál. Értesíteni fogunk az induláskor.",failed:"A feliratkozás nem sikerült. Ellenőrizd az email-címet és próbáld újra."},
     de:{badge:"Anmeldephase für Anbieter",title:"Füge deine Aktivitäten vor dem Start von Travendiq hinzu",text:"Im ersten Monat nehmen wir registrierte Aktivitätsanbieter auf. Erstelle dein Unternehmensprofil, reiche deine Aktivitäten ein und bereite dich auf den Start vor.",register:"Als Anbieter registrieren",login:"Ich habe bereits ein Konto",waitTitle:"Benachrichtigt mich, wenn Buchungen starten",waitText:"Die Registrierung für Reisende öffnet zum Start. Hinterlasse deine E-Mail-Adresse und wir informieren dich zuerst.",notify:"Benachrichtigen",success:"Du bist auf der Liste. Wir informieren dich zum Start.",failed:"Anmeldung fehlgeschlagen. Prüfe die E-Mail-Adresse und versuche es erneut."},
@@ -21,7 +20,6 @@ export default async function HomePage(
     pl:{badge:"Okres rejestracji dostawców",title:"Dodaj swoje atrakcje przed startem Travendiq",text:"W pierwszym miesiącu przyjmujemy zarejestrowanych dostawców atrakcji. Utwórz profil firmy, prześlij swoje atrakcje i przygotuj się do startu.",register:"Zarejestruj się jako dostawca",login:"Mam już konto",waitTitle:"Powiadom mnie o otwarciu rezerwacji",waitText:"Rejestracja podróżnych ruszy wraz ze startem. Zostaw e-mail, a powiadomimy Cię jako jednego z pierwszych.",notify:"Powiadom mnie",success:"Jesteś na liście. Powiadomimy Cię przy starcie.",failed:"Subskrypcja nie powiodła się. Sprawdź adres e-mail i spróbuj ponownie."},
     ar:{badge:"فترة انضمام مزوّدي الأنشطة",title:"أضف أنشطتك قبل إطلاق Travendiq",text:"خلال الشهر الأول نستقبل مزوّدي الأنشطة المسجلين. أنشئ ملف شركتك، وأرسل أنشطتك، واستعد للانطلاق معنا.",register:"التسجيل كمزوّد أنشطة",login:"لدي حساب بالفعل",waitTitle:"أبلغني عند فتح الحجوزات",waitText:"سيفتح تسجيل المسافرين عند الإطلاق. اترك بريدك الإلكتروني وسنبلغك أولاً.",notify:"أبلغني",success:"تمت إضافتك إلى القائمة. سنبلغك عند الإطلاق.",failed:"تعذر الاشتراك. تحقق من البريد الإلكتروني وحاول مرة أخرى."}
   };
-  const c = copy[locale];
-
+  const c = copy[locale] ?? copy.en!;
   return <div><section className="relative overflow-hidden bg-lagoon-900 text-white"><div className="absolute inset-0 opacity-25"><SafeImage src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1800" alt="" eager className="h-full w-full object-cover" /></div><div className="container-page relative py-20 sm:py-28"><p className="mb-4 inline-flex rounded-full bg-coral-500 px-4 py-2 text-sm font-bold">{c.badge}</p><h1 className="max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">{c.title}</h1><p className="mt-4 max-w-2xl text-lg text-lagoon-100">{c.text}</p><div className="mt-8 flex flex-wrap gap-3"><Link href={`/${locale}/auth/register`} className="btn-primary">{c.register}</Link><Link href={`/${locale}/auth/login`} className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20">{c.login}</Link></div><div id="waitlist" className="card mt-10 max-w-3xl p-5 text-lagoon-950 sm:p-6"><h2 className="text-xl font-extrabold">{c.waitTitle}</h2><p className="mt-1 text-sm text-lagoon-600">{c.waitText}</p>{searchParams.subscribed === "1" && <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{c.success}</p>}{searchParams.subscribed && searchParams.subscribed !== "1" && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{c.failed}</p>}<form action="/api/newsletter" method="post" className="mt-4 flex flex-col gap-2 sm:flex-row"><input type="email" name="email" required placeholder="email@example.com" className="input flex-1"/><input type="hidden" name="locale" value={locale}/><button className="btn-primary" type="submit">{c.notify}</button></form></div></div></section><span className="sr-only">{t.brand}</span></div>;
 }
