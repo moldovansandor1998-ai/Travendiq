@@ -48,6 +48,7 @@ export default async function ProviderRegisterPage(
       status: "under_review",
     } as const;
     const { data: existing } = await svc.from("providers").select("id").eq("owner_id", u.id).maybeSingle();
+    const isNewProvider = !existing;
     const result = existing
       ? await svc.from("providers").update(payload).eq("id", existing.id).eq("owner_id", u.id).select("id").single()
       : await svc.from("providers").insert(payload).select("id").single();
@@ -64,7 +65,7 @@ export default async function ProviderRegisterPage(
       actor_id: u.id, actor_role: "provider",
       action: "provider.registered", entity: "providers", entity_id: provider.id,
     });
-    redirect(`/${locale}/provider/dashboard`);
+    redirect(`/${locale}/provider/dashboard${isNewProvider ? "?registered=1" : ""}`);
   }
 
   if (!user) {
