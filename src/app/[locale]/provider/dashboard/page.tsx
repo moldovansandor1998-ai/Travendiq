@@ -6,9 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatMoney } from "@/lib/utils";
 import type { BookingStatus } from "@/lib/booking/status";
+import { MetaProviderRegistration } from "@/components/MetaProviderRegistration";
 
-export default async function ProviderDashboard(props: { params: Promise<{ locale: Locale }> }) {
+export default async function ProviderDashboard(props: {
+  params: Promise<{ locale: Locale }>;
+  searchParams: Promise<{ registered?: string }>;
+}) {
   const params = await props.params;
+  const searchParams = await props.searchParams;
   const { locale } = params;
   const t = getDictionary(locale);
   const pd = t.providerDash as Record<string, string>;
@@ -35,6 +40,7 @@ export default async function ProviderDashboard(props: { params: Promise<{ local
 
   return (
     <div className="container-page py-10">
+      <MetaProviderRegistration enabled={searchParams.registered === "1"} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-lagoon-950">{provider.display_name}</h1>
