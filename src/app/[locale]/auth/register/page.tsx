@@ -13,8 +13,9 @@ export default async function RegisterPage(props: { params: Promise<{ locale: Lo
     error: hu ? "A regisztráció nem sikerült, ezért megerősítő emailt sem küldtünk. Kérjük, próbáld újra." : "Registration failed, so no confirmation email was sent. Please try again.",
     rateLimited: t.auth.rateLimited,
     signIn: t.auth.signIn,
-    weakPassword: hu ? "Ez a jelszó túl könnyen kitalálható. Válassz erősebb, egyedi jelszót (legalább 8 karakter, kis- és nagybetű, szám ajánlott)." : "This password is too easy to guess. Please choose a stronger, unique password (at least 8 characters; upper/lowercase letters and numbers recommended).",
+    weakPassword: hu ? "A hitelesítési rendszer ezt a jelszót nem fogadta el. Kérjük, válassz egy másik, egyedi jelszót." : "The authentication system did not accept this password. Please choose a different, unique password.",
+    compromisedPassword: hu ? "A hitelesítési rendszer ezt a jelszót ismert vagy gyakran használt jelszóként érzékelte. Ez akkor is előfordulhat, ha van benne nagybetű, szám és speciális karakter. Kérjük, válassz egy teljesen más, egyedi jelszót." : "The authentication system identified this as a known or commonly used password. This can happen even when it contains uppercase letters, numbers and symbols. Please choose a completely different, unique password.",
     accountExists: hu ? "Ehhez az email-címhez már tartozhat fiók. Próbálj meg bejelentkezni." : "An account may already exist for this email address. Please try signing in.",
-    passwordHelp: hu ? "Legalább 8 karakter. Ne használj könnyen kitalálható jelszót (pl. Password123)." : "At least 8 characters. Avoid common or easily guessed passwords (for example Password123).",
+    passwordHelp: hu ? "Legalább 8 karakteres, egyedi jelszót használj. Az ismert vagy gyakran használt jelszavakat a biztonsági rendszer elutasíthatja." : "Use a unique password of at least 8 characters. Known or commonly used passwords may be rejected by the security system.",
   }} />;
 }
